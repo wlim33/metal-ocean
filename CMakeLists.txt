@@ -85,3 +85,6 @@ add_dependencies(metal-ocean shaders)
 add_custom_command(TARGET metal-ocean POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB}
             $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default.metallib)
+
+enable_testing()
+add_subdirectory(tests)
