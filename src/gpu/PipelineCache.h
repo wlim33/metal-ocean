@@ -7,7 +7,7 @@ struct MetalContext;
 struct RenderPSODesc {
     std::string vertex_fn;
     std::string fragment_fn;
-    unsigned    color_pixel_format = 80; // MTLPixelFormatBGRA8Unorm_sRGB
+    unsigned    color_pixel_format = 81; // MTLPixelFormatBGRA8Unorm_sRGB (= 81)
     bool        blending = false;
 };
 

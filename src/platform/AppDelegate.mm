@@ -22,6 +22,7 @@
                                                   defer:NO];
     _view = [[OceanView alloc] initWithFrame:frame
                                      device:(__bridge id<MTLDevice>)_ctx.device];
+    [_view setCommandQueue:(__bridge id<MTLCommandQueue>)_ctx.queue];
     _view.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     _view.clearColor = MTLClearColorMake(0.02, 0.05, 0.10, 1.0);
     _view.preferredFramesPerSecond = 60;

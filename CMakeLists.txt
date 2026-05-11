@@ -10,6 +10,12 @@ file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
 list(FILTER APP_SOURCES EXCLUDE REGEX ".*/tests/.*")
 
 add_executable(metal-ocean MACOSX_BUNDLE ${APP_SOURCES})
+set_source_files_properties(
+    src/platform/AppDelegate.mm
+    src/platform/OceanView.mm
+    src/gpu/MetalContext.mm
+    src/gpu/PipelineCache.mm
+    PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 set_target_properties(metal-ocean PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
 )
