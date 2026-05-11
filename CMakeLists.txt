@@ -107,3 +107,7 @@ add_custom_command(TARGET metal-ocean POST_BUILD
 
 enable_testing()
 add_subdirectory(tests)
+
+add_custom_target(run
+    COMMAND open ${CMAKE_BINARY_DIR}/metal-ocean.app
+    DEPENDS metal-ocean)
