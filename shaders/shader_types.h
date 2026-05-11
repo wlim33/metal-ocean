@@ -19,3 +19,11 @@ struct CameraUniforms {
     vec3  position;
     float _pad;
 };
+
+struct SkyUniforms {
+    mat4  inv_view_proj;
+    vec3  sun_dir;
+    float turbidity;
+    vec3  camera_pos;
+    float _pad;
+};

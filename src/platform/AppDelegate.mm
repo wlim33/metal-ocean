@@ -7,6 +7,7 @@
 #import "ui/ImGuiBackend.h"
 #import "ui/DebugPanel.h"
 #import "render/OceanRenderer.h"
+#import "render/SkyRenderer.h"
 #import "ocean/ProjectedGrid.h"
 #import <Metal/Metal.h>
 #include <memory>
@@ -19,6 +20,7 @@
     std::unique_ptr<mo::App> _app;
     mo::ImGuiBackend _imgui;
     mo::OceanRenderer _ocean;
+    mo::SkyRenderer _sky;
     int _frame_index;
 }
 
@@ -42,6 +44,7 @@
 
     _imgui.init(_ctx, (__bridge void*)_view);
     _ocean.init(_ctx, _cache);
+    _sky.init(_ctx, _cache);
     _frame_index = 0;
 
     __weak AppDelegate* weakSelf = self;
@@ -63,6 +66,7 @@
         self2->_ocean.upload_grid(self2->_ctx, grid, self2->_frame_index);
 
         id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
+        self2->_sky.encode_full_screen((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
         self2->_ocean.encode_wireframe((__bridge void*)enc, self2->_app->camera(), self2->_frame_index);
         self2->_imgui.render((__bridge void*)cb, (__bridge void*)rp, (__bridge void*)enc);
         [enc endEncoding];
