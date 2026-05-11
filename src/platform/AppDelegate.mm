@@ -81,7 +81,7 @@
         self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),
             self2->_app->config(),
             self2->_sim.data(), self2->_sim.count(),
-            self2->_sky, self2->_frame_index, /*debug_view=*/0);
+            self2->_sky, self2->_frame_index, self2->_app->debug_view);
         self2->_imgui.render((__bridge void*)cb, (__bridge void*)rp, (__bridge void*)enc);
         [enc endEncoding];
         self2->_frame_index++;

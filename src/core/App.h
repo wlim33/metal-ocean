@@ -18,6 +18,7 @@ public:
     const Clock&       clock()  const { return clock_; }
 
     bool mouse_down = false;
+    int  debug_view = 0;
 private:
     Config config_;
     OrbitCamera camera_;

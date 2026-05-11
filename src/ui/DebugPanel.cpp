@@ -35,6 +35,10 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("sss str",    &c.shading.sss_strength,   0.0f, 4.0f);
         ImGui::SliderFloat("fog density",&c.shading.depth_fog_density, 0.0f, 0.5f);
     }
+    if (ImGui::CollapsingHeader("Debug view")) {
+        const char* names[] = {"final","normal","folding","fresnel","reflection","refraction","sss"};
+        ImGui::Combo("view", &app.debug_view, names, IM_ARRAYSIZE(names));
+    }
     ImGui::End();
 }
 }
