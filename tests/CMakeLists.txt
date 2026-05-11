@@ -20,5 +20,11 @@ target_sources(metal-ocean-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src/ocean/ProjectedGrid.cpp
 )
 
+target_sources(metal-ocean-tests PRIVATE
+    fft_reference_test.cpp
+    support/cpu_fft_reference.cpp
+)
+target_include_directories(metal-ocean-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 include(GoogleTest)
 gtest_discover_tests(metal-ocean-tests)
