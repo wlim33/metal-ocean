@@ -1,9 +1,8 @@
 #pragma once
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
-#include <variant>
-#include <optional>
 #include <glm/glm.hpp>
 
 namespace mo {
