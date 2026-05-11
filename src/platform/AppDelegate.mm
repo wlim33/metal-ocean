@@ -10,8 +10,12 @@
 #import "render/SkyRenderer.h"
 #import "ocean/ProjectedGrid.h"
 #import "ocean/Simulation.h"
+#import "bench/BenchmarkHarness.h"
+#import "bench/BenchCameraPath.h"
 #import <Metal/Metal.h>
 #include <memory>
+#include <fstream>
+#include <sstream>
 
 @implementation AppDelegate {
     OceanView* _view;
@@ -23,13 +27,27 @@
     mo::OceanRenderer _ocean;
     mo::SkyRenderer _sky;
     mo::Simulation _sim;
+    mo::BenchmarkHarness _bench;
     int _frame_index;
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification*)note {
     _ctx = mo::create_metal_context();
-    auto cfg = mo::load_config_from_string("").config;
-    _app = std::make_unique<mo::App>(cfg);
+    NSArray<NSString*>* args = [[NSProcessInfo processInfo] arguments];
+    std::string toml = "";
+    std::vector<std::string> overrides;
+    for (NSUInteger i = 1; i < args.count; ++i) {
+        NSString* a = args[i];
+        if ([a isEqualToString:@"--config"] && i + 1 < args.count) {
+            std::ifstream in([args[i+1] UTF8String]);
+            std::stringstream ss; ss << in.rdbuf(); toml = ss.str(); ++i;
+        } else if ([a isEqualToString:@"--set"] && i + 1 < args.count) {
+            overrides.emplace_back([args[i+1] UTF8String]); ++i;
+        }
+    }
+    auto load = mo::load_config_from_string(toml);
+    load = mo::apply_overrides(std::move(load), overrides);
+    _app = std::make_unique<mo::App>(load.config);
 
     NSRect frame = NSMakeRect(100, 100, 1280, 720);
     NSWindowStyleMask style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
@@ -48,11 +66,16 @@
     _ocean.init(_ctx, _cache);
     _sky.init(_ctx, _cache);
     _sim.init(_ctx, _cache, _app->config());
+    _bench.start(_app->config(), mo::config_hash(_app->config()));
     _frame_index = 0;
 
     __weak AppDelegate* weakSelf = self;
     [_view setFrameRenderer:^(id<MTLCommandBuffer> cb, MTLRenderPassDescriptor* rp) {
         AppDelegate* self2 = weakSelf; if (!self2) return;
+        if (self2->_bench.active())
+            mo::apply_bench_path(self2->_app->camera(),
+                self2->_app->config().bench.camera_path,
+                self2->_bench.current_frame());
         self2->_app->handle_input(self2->_input);
         self2->_app->update();
         self2->_imgui.begin_frame((__bridge void*)self2->_view);
@@ -85,6 +108,13 @@
         self2->_imgui.render((__bridge void*)cb, (__bridge void*)rp, (__bridge void*)enc);
         [enc endEncoding];
         self2->_frame_index++;
+        [cb addCompletedHandler:^(id<MTLCommandBuffer> b) {
+            double gpu_ms = (b.GPUEndTime - b.GPUStartTime) * 1000.0;
+            self2->_bench.record({ self2->_bench.current_frame(), 0.0, gpu_ms, 0.0 });
+            if (self2->_bench.should_exit()) {
+                dispatch_async(dispatch_get_main_queue(), ^{ [NSApp terminate:nil]; });
+            }
+        }];
     }];
 
     self.window.contentView = _view;
