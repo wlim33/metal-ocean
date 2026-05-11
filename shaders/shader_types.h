@@ -27,3 +27,15 @@ struct SkyUniforms {
     vec3  camera_pos;
     float _pad;
 };
+
+struct CascadeUniforms {
+    int   N;
+    float L;
+    float t;
+    float choppiness;
+};
+
+struct FftPassUniforms {
+    int N;
+    int direction; // 0 = horizontal, 1 = vertical
+};

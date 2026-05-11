@@ -21,6 +21,7 @@ set_source_files_properties(
     src/ui/ImGuiBackend.mm
     src/render/OceanRenderer.mm
     src/render/SkyRenderer.mm
+    src/ocean/Cascade.mm
     PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 set_target_properties(metal-ocean PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
