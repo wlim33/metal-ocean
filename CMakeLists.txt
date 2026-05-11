@@ -13,6 +13,7 @@ add_executable(metal-ocean MACOSX_BUNDLE ${APP_SOURCES})
 set_source_files_properties(
     src/platform/AppDelegate.mm
     src/platform/OceanView.mm
+    src/platform/InputBridge.mm
     src/gpu/MetalContext.mm
     src/gpu/PipelineCache.mm
     src/gpu/Buffer.mm

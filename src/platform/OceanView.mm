@@ -3,6 +3,8 @@
 @implementation OceanView {
     void (^_render)(id<MTLCommandBuffer>, MTLRenderPassDescriptor*);
     id<MTLCommandQueue> _queue;
+    mo::InputBridge* _bridge;
+    BOOL _dragging;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame device:(id<MTLDevice>)device {
@@ -23,6 +25,42 @@
 
 - (void)setFrameRenderer:(void (^)(id<MTLCommandBuffer>, MTLRenderPassDescriptor*))block {
     _render = [block copy];
+}
+
+- (void)setInputBridge:(mo::InputBridge*)bridge {
+    _bridge = bridge;
+}
+
+- (void)mouseDown:(NSEvent*)e {
+    _dragging = YES;
+    if (_bridge) { mo::InputEvent ev{}; ev.kind = mo::InputKind::MouseDown; ev.button = 0; _bridge->push(ev); }
+}
+
+- (void)mouseUp:(NSEvent*)e {
+    _dragging = NO;
+    if (_bridge) { mo::InputEvent ev{}; ev.kind = mo::InputKind::MouseUp; ev.button = 0; _bridge->push(ev); }
+}
+
+- (void)mouseDragged:(NSEvent*)e {
+    if (!_bridge) return;
+    mo::InputEvent ev{}; ev.kind = mo::InputKind::MouseMove;
+    ev.x = (float)e.deltaX; ev.y = (float)e.deltaY;
+    _bridge->push(ev);
+}
+
+- (void)scrollWheel:(NSEvent*)e {
+    if (!_bridge) return;
+    mo::InputEvent ev{}; ev.kind = mo::InputKind::Scroll; ev.scroll = (float)e.scrollingDeltaY * 0.05f;
+    _bridge->push(ev);
+}
+
+- (void)setFrameSize:(NSSize)s {
+    [super setFrameSize:s];
+    if (_bridge) {
+        mo::InputEvent ev{}; ev.kind = mo::InputKind::Resize;
+        ev.width = (int)self.drawableSize.width; ev.height = (int)self.drawableSize.height;
+        _bridge->push(ev);
+    }
 }
 
 // MTKViewDelegate — called by the display link every frame
