@@ -1,0 +1,32 @@
+cascade_count = 3
+grid_cols = 256
+grid_rows = 256
+displacement_range_m = 8.0
+max_in_flight_frames = 3
+
+[wave]
+wind_speed_mps = 12.0
+wind_dir_rad   = 0.5
+choppiness     = 1.2
+swell          = 0.3
+
+[sky]
+cubemap_resolution = 128
+sun_elevation_rad  = 0.7
+sun_azimuth_rad    = 1.1
+turbidity          = 3.0
+
+[shading]
+foam_threshold     = 0.4
+foam_strength      = 1.0
+sss_strength       = 0.5
+depth_fog_density  = 0.05
+base_thickness_m   = 4.0
+tonemap            = "aces"
+
+[bench]
+bench_mode      = false
+warmup_frames   = 60
+measure_frames  = 600
+camera_path     = "orbit"
+output_path     = "bench-{timestamp}.csv"

@@ -101,5 +101,9 @@ add_custom_command(TARGET metal-ocean POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB}
             $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default.metallib)
 
+add_custom_command(TARGET metal-ocean POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/default-config.toml
+            $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default-config.toml)
+
 enable_testing()
 add_subdirectory(tests)

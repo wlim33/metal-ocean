@@ -45,6 +45,13 @@
             overrides.emplace_back([args[i+1] UTF8String]); ++i;
         }
     }
+    if (toml.empty()) {
+        NSString* defp = [[NSBundle mainBundle] pathForResource:@"default-config" ofType:@"toml"];
+        if (defp) {
+            std::ifstream in([defp UTF8String]);
+            std::stringstream ss; ss << in.rdbuf(); toml = ss.str();
+        }
+    }
     auto load = mo::load_config_from_string(toml);
     load = mo::apply_overrides(std::move(load), overrides);
     _app = std::make_unique<mo::App>(load.config);
