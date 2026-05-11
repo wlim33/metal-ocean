@@ -60,3 +60,28 @@ target_link_libraries(imgui PUBLIC
     "-framework AppKit" "-framework GameController")
 
 target_link_libraries(metal-ocean PRIVATE glm tomlplusplus::tomlplusplus imgui)
+
+file(GLOB METAL_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/shaders/*.metal")
+set(AIR_FILES)
+foreach(METAL_SRC ${METAL_SOURCES})
+    get_filename_component(NAME_WE ${METAL_SRC} NAME_WE)
+    set(AIR_OUT ${CMAKE_BINARY_DIR}/air/${NAME_WE}.air)
+    add_custom_command(OUTPUT ${AIR_OUT}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/air
+        COMMAND xcrun -sdk macosx metal -std=metal3.0 -O3 -I ${CMAKE_SOURCE_DIR}/shaders
+                -c ${METAL_SRC} -o ${AIR_OUT}
+        DEPENDS ${METAL_SRC} ${CMAKE_SOURCE_DIR}/shaders/shader_types.h
+        VERBATIM)
+    list(APPEND AIR_FILES ${AIR_OUT})
+endforeach()
+
+set(METALLIB ${CMAKE_BINARY_DIR}/default.metallib)
+add_custom_command(OUTPUT ${METALLIB}
+    COMMAND xcrun -sdk macosx metallib ${AIR_FILES} -o ${METALLIB}
+    DEPENDS ${AIR_FILES} VERBATIM)
+add_custom_target(shaders DEPENDS ${METALLIB})
+add_dependencies(metal-ocean shaders)
+
+add_custom_command(TARGET metal-ocean POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB}
+            $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default.metallib)
