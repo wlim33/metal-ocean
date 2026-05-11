@@ -3,3 +3,6 @@ build/
 *.swp
 out/
 bench-*.csv
+compile_commands.json
+.cache/
+imgui.ini
