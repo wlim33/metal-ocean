@@ -10,5 +10,10 @@ target_sources(metal-ocean-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core/Config.cpp
 )
 
+target_sources(metal-ocean-tests PRIVATE
+    camera_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/OrbitCamera.cpp
+)
+
 include(GoogleTest)
 gtest_discover_tests(metal-ocean-tests)
