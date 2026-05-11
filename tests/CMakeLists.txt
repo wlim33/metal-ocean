@@ -15,5 +15,10 @@ target_sources(metal-ocean-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core/OrbitCamera.cpp
 )
 
+target_sources(metal-ocean-tests PRIVATE
+    projected_grid_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/ocean/ProjectedGrid.cpp
+)
+
 include(GoogleTest)
 gtest_discover_tests(metal-ocean-tests)
