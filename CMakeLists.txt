@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 
 file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
-    src/platform/*.mm src/platform/*.h
-)
+    src/*.mm src/*.cpp src/*.h)
+list(FILTER APP_SOURCES EXCLUDE REGEX ".*/tests/.*")
 
 add_executable(metal-ocean MACOSX_BUNDLE ${APP_SOURCES})
 set_target_properties(metal-ocean PROPERTIES
