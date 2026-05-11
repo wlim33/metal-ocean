@@ -39,3 +39,25 @@ struct FftPassUniforms {
     int N;
     int direction; // 0 = horizontal, 1 = vertical
 };
+
+#define MAX_CASCADES 4
+
+struct OceanSurfaceUniforms {
+    int   cascade_count;
+    float cascade_size[MAX_CASCADES];
+    float cascade_normal_weight[MAX_CASCADES];
+    vec3  sun_dir;
+    float _pad0;
+    vec3  sun_color;
+    float sun_shininess;
+    vec3  deep_water_color;
+    float depth_fog_density;
+    vec3  extinction_rgb;
+    float base_thickness_m;
+    vec3  sss_color;
+    float sss_strength;
+    float foam_threshold;
+    float foam_strength;
+    float displacement_range_m;
+    int   debug_view;
+};

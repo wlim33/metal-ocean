@@ -86,7 +86,10 @@
         }
         id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
         self2->_sky.encode_full_screen((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
-        self2->_ocean.encode_wireframe((__bridge void*)enc, self2->_app->camera(), self2->_frame_index);
+        mo::Cascade* cascades_arr[] = { &self2->_c0 };
+        self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),
+            self2->_app->config(), cascades_arr, 1, self2->_sky,
+            self2->_frame_index, /*debug_view=*/0);
         self2->_imgui.render((__bridge void*)cb, (__bridge void*)rp, (__bridge void*)enc);
         [enc endEncoding];
         self2->_frame_index++;

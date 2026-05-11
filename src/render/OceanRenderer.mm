@@ -1,40 +1,40 @@
 #import "render/OceanRenderer.h"
-#import "gpu/MetalContext.h"
-#import "gpu/PipelineCache.h"
+#import "render/SkyRenderer.h"
+#import "ocean/Cascade.h"
 #import "ocean/ProjectedGrid.h"
 #import "core/OrbitCamera.h"
-#include "shader_types.h"
+#import "core/Config.h"
+#import "gpu/MetalContext.h"
+#import "gpu/PipelineCache.h"
+#import "gpu/Texture.h"
+#import "shader_types.h"
 #import <Metal/Metal.h>
 #include <cstring>
+#include <cmath>
 
 namespace mo {
 
 void OceanRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
+    (void)cache;
     MTLRenderPipelineDescriptor* desc = [MTLRenderPipelineDescriptor new];
     id<MTLLibrary> lib = (__bridge id<MTLLibrary>)ctx.library;
     desc.vertexFunction   = [lib newFunctionWithName:@"ocean_vs"];
-    desc.fragmentFunction = [lib newFunctionWithName:@"ocean_wireframe_fs"];
+    desc.fragmentFunction = [lib newFunctionWithName:@"ocean_fs"];
     desc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
-
     MTLVertexDescriptor* vd = [MTLVertexDescriptor new];
     vd.attributes[0].format = MTLVertexFormatFloat2;
-    vd.attributes[0].offset = 0;
-    vd.attributes[0].bufferIndex = 0;
+    vd.attributes[0].offset = 0; vd.attributes[0].bufferIndex = 0;
     vd.layouts[0].stride = sizeof(float) * 2;
-    vd.layouts[0].stepFunction = MTLVertexStepFunctionPerVertex;
     desc.vertexDescriptor = vd;
-
     NSError* err = nil;
     id<MTLDevice> dev = (__bridge id<MTLDevice>)ctx.device;
     id<MTLRenderPipelineState> pso = [dev newRenderPipelineStateWithDescriptor:desc error:&err];
-    if (!pso) {
-        fprintf(stderr, "ocean wireframe pso failed: %s\n", err.localizedDescription.UTF8String);
-        std::exit(1);
-    }
-    pso_wire_ = (__bridge_retained void*)pso;
+    if (!pso) { fprintf(stderr, "ocean pso: %s\n", err.localizedDescription.UTF8String); std::exit(1); }
+    pso_ = (__bridge_retained void*)pso;
 
     for (int i = 0; i < RING; ++i) {
-        cam_buf_[i] = make_buffer(ctx, sizeof(CameraUniforms), true);
+        cam_buf_[i]  = make_buffer(ctx, sizeof(CameraUniforms), true);
+        surf_buf_[i] = make_buffer(ctx, sizeof(OceanSurfaceUniforms), true);
     }
 }
 
@@ -49,23 +49,57 @@ void OceanRenderer::upload_grid(const MetalContext& ctx, const ProjectedGridOutp
     index_count_[slot] = g.indices.size();
 }
 
-void OceanRenderer::encode_wireframe(void* encoder, const OrbitCamera& cam, int idx) {
-    int slot = idx % RING;
+void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& cfg,
+                           Cascade* const* cascades, int cascade_count,
+                           const SkyRenderer& sky, int frame_index, int debug_view) {
+    int slot = frame_index % RING;
     if (!index_count_[slot]) return;
     id<MTLRenderCommandEncoder> enc = (__bridge id<MTLRenderCommandEncoder>)encoder;
 
-    CameraUniforms u;
+    CameraUniforms cu;
     auto v = cam.view(); auto p = cam.proj(); auto vp = p * v;
-    std::memcpy(&u.view,       &v[0][0],  sizeof(float)*16);
-    std::memcpy(&u.proj,       &p[0][0],  sizeof(float)*16);
-    std::memcpy(&u.view_proj,  &vp[0][0], sizeof(float)*16);
-    u.position = (simd_float3){ cam.position().x, cam.position().y, cam.position().z };
-    std::memcpy(cam_buf_[slot].cpu_ptr, &u, sizeof(CameraUniforms));
+    std::memcpy(&cu.view, &v[0][0], 64);
+    std::memcpy(&cu.proj, &p[0][0], 64);
+    std::memcpy(&cu.view_proj, &vp[0][0], 64);
+    cu.position = (simd_float3){cam.position().x, cam.position().y, cam.position().z};
+    std::memcpy(cam_buf_[slot].cpu_ptr, &cu, sizeof(cu));
 
-    [enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)pso_wire_];
+    OceanSurfaceUniforms su{};
+    su.cascade_count = cascade_count;
+    for (int i = 0; i < cascade_count; ++i) {
+        su.cascade_size[i] = cfg.cascades[i].size_m;
+        su.cascade_normal_weight[i] = cfg.cascades[i].normal_weight;
+    }
+    float ce = std::cos(cfg.sky.sun_elevation_rad), se = std::sin(cfg.sky.sun_elevation_rad);
+    float ca = std::cos(cfg.sky.sun_azimuth_rad),   sa = std::sin(cfg.sky.sun_azimuth_rad);
+    su.sun_dir   = (simd_float3){ce * sa, se, ce * ca};
+    su.sun_color = (simd_float3){cfg.shading.sun_color.x, cfg.shading.sun_color.y, cfg.shading.sun_color.z};
+    su.sun_shininess = cfg.shading.sun_shininess;
+    su.deep_water_color = (simd_float3){cfg.shading.deep_water_color.x, cfg.shading.deep_water_color.y, cfg.shading.deep_water_color.z};
+    su.depth_fog_density = cfg.shading.depth_fog_density;
+    su.extinction_rgb = (simd_float3){cfg.shading.extinction_rgb.x, cfg.shading.extinction_rgb.y, cfg.shading.extinction_rgb.z};
+    su.base_thickness_m = cfg.shading.base_thickness_m;
+    su.sss_color = (simd_float3){cfg.shading.sss_color.x, cfg.shading.sss_color.y, cfg.shading.sss_color.z};
+    su.sss_strength = cfg.shading.sss_strength;
+    su.foam_threshold = cfg.shading.foam_threshold;
+    su.foam_strength  = cfg.shading.foam_strength;
+    su.displacement_range_m = cfg.displacement_range_m;
+    su.debug_view = debug_view;
+    std::memcpy(surf_buf_[slot].cpu_ptr, &su, sizeof(su));
+
+    [enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)pso_];
     [enc setVertexBuffer:(__bridge id<MTLBuffer>)vbo_[slot].handle offset:0 atIndex:0];
-    [enc setVertexBuffer:(__bridge id<MTLBuffer>)cam_buf_[slot].handle offset:0 atIndex:1];
-    [enc setTriangleFillMode:MTLTriangleFillModeLines];
+    [enc setVertexBuffer:(__bridge id<MTLBuffer>)cam_buf_[slot].handle  offset:0 atIndex:1];
+    [enc setVertexBuffer:(__bridge id<MTLBuffer>)surf_buf_[slot].handle offset:0 atIndex:2];
+    [enc setFragmentBuffer:(__bridge id<MTLBuffer>)cam_buf_[slot].handle  offset:0 atIndex:1];
+    [enc setFragmentBuffer:(__bridge id<MTLBuffer>)surf_buf_[slot].handle offset:0 atIndex:2];
+
+    for (int i = 0; i < cascade_count; ++i) {
+        [enc setVertexTexture:(__bridge id<MTLTexture>)cascades[i]->displacement_handle() atIndex:i];
+        [enc setFragmentTexture:(__bridge id<MTLTexture>)cascades[i]->normal_handle() atIndex:i];
+    }
+    [enc setFragmentTexture:(__bridge id<MTLTexture>)sky.cubemap_handle() atIndex:MAX_CASCADES];
+
     [enc drawIndexedPrimitives:MTLPrimitiveTypeTriangle
                     indexCount:index_count_[slot]
                      indexType:MTLIndexTypeUInt32
