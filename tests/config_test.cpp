@@ -27,3 +27,21 @@ TEST(Config, RejectsUnknownTopLevelKey) {
     for (auto& w : result.warnings) if (w.find("zorp") != std::string::npos) has_unknown = true;
     EXPECT_TRUE(has_unknown);
 }
+
+TEST(Config, CliOverrideAppliesAfterToml) {
+    auto base = mo::load_config_from_string("[wave]\nwind_speed_mps = 5.0\n");
+    auto r = mo::apply_overrides(std::move(base), {"wave.wind_speed_mps=18.0"});
+    EXPECT_FLOAT_EQ(r.config.wave.wind_speed_mps, 18.0f);
+}
+
+TEST(Config, HashStableForIdenticalConfigs) {
+    auto a = mo::load_config_from_string("");
+    auto b = mo::load_config_from_string("");
+    EXPECT_EQ(mo::config_hash(a.config), mo::config_hash(b.config));
+}
+
+TEST(Config, HashChangesWithDifferentConfig) {
+    auto a = mo::load_config_from_string("");
+    auto b = mo::load_config_from_string("[wave]\nwind_speed_mps = 20.0\n");
+    EXPECT_NE(mo::config_hash(a.config), mo::config_hash(b.config));
+}

@@ -85,4 +85,6 @@ struct LoadResult {
 
 LoadResult load_config_from_string(const std::string& toml_text);
 LoadResult load_config_from_file(const std::string& path);
+LoadResult apply_overrides(LoadResult in, const std::vector<std::string>& key_value_pairs);
+uint64_t   config_hash(const Config& c);
 } // namespace mo
