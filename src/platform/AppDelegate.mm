@@ -65,6 +65,7 @@
             self2->_app->camera().position(), pg);
         self2->_ocean.upload_grid(self2->_ctx, grid, self2->_frame_index);
 
+        self2->_sky.bake_cubemap_if_dirty(self2->_ctx, (__bridge void*)cb, self2->_app->config());
         id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
         self2->_sky.encode_full_screen((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
         self2->_ocean.encode_wireframe((__bridge void*)enc, self2->_app->camera(), self2->_frame_index);

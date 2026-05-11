@@ -4,12 +4,16 @@ using namespace metal;
 
 struct VOut { float4 pos [[position]]; float2 uv; };
 
-vertex VOut sky_vs(uint vid [[vertex_id]]) {
+static VOut sky_vs_impl(uint vid) {
     const float2 verts[3] = { float2(-1,-3), float2(-1, 1), float2( 3, 1) };
     VOut o;
     o.pos = float4(verts[vid], 0, 1);
     o.uv  = verts[vid];
     return o;
+}
+
+vertex VOut sky_vs(uint vid [[vertex_id]]) {
+    return sky_vs_impl(vid);
 }
 
 // Preetham sky (slightly simplified). Returns linear RGB radiance.
@@ -53,4 +57,27 @@ fragment float4 sky_fs(VOut in [[stage_in]],
     // Simple tone-map for now
     col = col / (col + 1.0);
     return float4(col, 1.0);
+}
+
+struct CubeFaceUniforms {
+    float3 right;
+    float  _p0;
+    float3 up;
+    float  _p1;
+    float3 forward;
+    float  _p2;
+    float3 sun_dir;
+    float  turbidity;
+};
+
+vertex VOut sky_cube_vs(uint vid [[vertex_id]]) {
+    return sky_vs_impl(vid);
+}
+
+fragment float4 sky_cube_fs(VOut in [[stage_in]],
+                            constant CubeFaceUniforms& U [[buffer(0)]]) {
+    float2 nd = in.uv; // [-1,1]
+    float3 dir = normalize(U.forward + nd.x * U.right + nd.y * U.up);
+    float3 col = preetham(dir, normalize(U.sun_dir), U.turbidity);
+    return float4(col, 1.0); // store HDR-ish (clamped by texture format)
 }
