@@ -6,6 +6,8 @@
 #import "core/App.h"
 #import "ui/ImGuiBackend.h"
 #import "ui/DebugPanel.h"
+#import "render/OceanRenderer.h"
+#import "ocean/ProjectedGrid.h"
 #import <Metal/Metal.h>
 #include <memory>
 
@@ -16,6 +18,8 @@
     mo::InputBridge _input;
     std::unique_ptr<mo::App> _app;
     mo::ImGuiBackend _imgui;
+    mo::OceanRenderer _ocean;
+    int _frame_index;
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification*)note {
@@ -36,9 +40,9 @@
     [_view setInputBridge:&_input];
     _app->camera().set_aspect(1280.0f / 720.0f);
 
-    mo::RenderPSODesc fs_desc{"fs_triangle_vs","fs_clear_fs"};
-    void* pso = _cache.render_pso(_ctx, fs_desc);
     _imgui.init(_ctx, (__bridge void*)_view);
+    _ocean.init(_ctx, _cache);
+    _frame_index = 0;
 
     __weak AppDelegate* weakSelf = self;
     [_view setFrameRenderer:^(id<MTLCommandBuffer> cb, MTLRenderPassDescriptor* rp) {
@@ -48,11 +52,21 @@
         self2->_imgui.begin_frame((__bridge void*)self2->_view);
         mo::draw_debug_panel(*self2->_app);
 
+        mo::ProjectedGridParams pg;
+        pg.cols = self2->_app->config().grid_cols;
+        pg.rows = self2->_app->config().grid_rows;
+        pg.displacement_range_m = self2->_app->config().displacement_range_m;
+        auto grid = mo::build_projected_grid(
+            self2->_app->camera().view(),
+            self2->_app->camera().proj(),
+            self2->_app->camera().position(), pg);
+        self2->_ocean.upload_grid(self2->_ctx, grid, self2->_frame_index);
+
         id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
-        [enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)pso];
-        [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        self2->_ocean.encode_wireframe((__bridge void*)enc, self2->_app->camera(), self2->_frame_index);
         self2->_imgui.render((__bridge void*)cb, (__bridge void*)rp, (__bridge void*)enc);
         [enc endEncoding];
+        self2->_frame_index++;
     }];
 
     self.window.contentView = _view;

@@ -19,11 +19,12 @@ set_source_files_properties(
     src/gpu/Buffer.mm
     src/gpu/Texture.mm
     src/ui/ImGuiBackend.mm
+    src/render/OceanRenderer.mm
     PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 set_target_properties(metal-ocean PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
 )
-target_include_directories(metal-ocean PRIVATE src)
+target_include_directories(metal-ocean PRIVATE src ${CMAKE_SOURCE_DIR}/shaders)
 target_link_libraries(metal-ocean PRIVATE
     "-framework Foundation" "-framework AppKit"
     "-framework Metal" "-framework MetalKit" "-framework QuartzCore"
