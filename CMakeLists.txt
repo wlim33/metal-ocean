@@ -18,6 +18,7 @@ set_source_files_properties(
     src/gpu/PipelineCache.mm
     src/gpu/Buffer.mm
     src/gpu/Texture.mm
+    src/ui/ImGuiBackend.mm
     PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 set_target_properties(metal-ocean PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/Info.plist.in"
