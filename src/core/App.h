@@ -2,13 +2,17 @@
 #include "core/Config.h"
 #include "core/OrbitCamera.h"
 #include "core/Clock.h"
-#include "platform/InputBridge.h"
+#include "core/InputEvent.h"
+#include <vector>
 
 namespace mo {
 class App {
 public:
     explicit App(Config cfg);
-    void handle_input(InputBridge& b);
+    // ui_captures_mouse (ImGui WantCaptureMouse): MouseDown and Scroll are
+    // dropped so panel interaction never drives the camera; MouseUp always
+    // lands so an ocean-started drag can cross the panel and still release.
+    void handle_input(const std::vector<InputEvent>& events, bool ui_captures_mouse);
     void update();
 
     const OrbitCamera& camera() const { return camera_; }

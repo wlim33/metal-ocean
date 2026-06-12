@@ -115,10 +115,13 @@ extern double mo_g_drawable_wait_ms;
         };
         auto tb0 = std::chrono::steady_clock::now();
 
-        self2->_app->handle_input(self2->_input);
-        self2->_app->update();
         // Benchmarks measure the renderer, not the debug UI.
         const bool noui = self2->_bench.active();
+        // WantCaptureMouse from the previous ImGui frame gates this frame's
+        // camera input — the standard one-frame-latency capture pattern.
+        self2->_app->handle_input(self2->_input.drain(),
+                                  !noui && self2->_imgui.want_capture_mouse());
+        self2->_app->update();
         if (!noui) {
             self2->_imgui.begin_frame((__bridge void*)self2->_view);
             mo::draw_debug_panel(*self2->_app);

@@ -27,6 +27,9 @@ void ImGuiBackend::begin_frame(void* mtkview) {
     ImGui_ImplOSX_NewFrame(v);
     ImGui::NewFrame();
 }
+bool ImGuiBackend::want_capture_mouse() const {
+    return ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse;
+}
 void ImGuiBackend::render(void* command_buffer, void*, void* render_encoder) {
     ImGui::Render();
     ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(),

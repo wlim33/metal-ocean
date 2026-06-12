@@ -16,6 +16,12 @@ target_sources(metal-ocean-tests PRIVATE
 )
 
 target_sources(metal-ocean-tests PRIVATE
+    app_input_test.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/App.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/Clock.cpp
+)
+
+target_sources(metal-ocean-tests PRIVATE
     projected_grid_test.cpp
     ${CMAKE_SOURCE_DIR}/src/ocean/ProjectedGrid.cpp
 )
