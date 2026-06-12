@@ -43,7 +43,7 @@ fragment float4 ocean_fs(
     array<texture2d<float>, MAX_CASCADES> normal_tex [[texture(0)]],
     texturecube<float>              sky_cube         [[texture(MAX_CASCADES)]]
 ) {
-    constexpr sampler smp(filter::linear, address::repeat);
+    constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat);
     constexpr sampler cube_smp(filter::linear, address::clamp_to_edge);
 
     float3 n = float3(0.0, 0.0, 0.0);

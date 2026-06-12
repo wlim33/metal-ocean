@@ -105,6 +105,9 @@
             self2->_sim.encode((__bridge void*)ce, (float)self2->_app->clock().total_seconds(),
                                self2->_app->config());
             [ce endEncoding];
+            id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
+            self2->_sim.encode_mipgen((__bridge void*)blit, self2->_app->config());
+            [blit endEncoding];
         }
         id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
         self2->_sky.encode_full_screen((__bridge void*)enc, self2->_app->camera(), self2->_app->config());

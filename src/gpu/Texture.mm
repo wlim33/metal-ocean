@@ -15,13 +15,16 @@ static MTLPixelFormat pf(TexFormat f) {
 }
 
 Texture make_texture_2d(const MetalContext& ctx, uint32_t w, uint32_t h, TexFormat f,
-                        bool storage_write, bool render_target) {
+                        bool storage_write, bool render_target, bool mipmapped) {
     id<MTLDevice> dev = (__bridge id<MTLDevice>)ctx.device;
     MTLTextureDescriptor* d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pf(f)
-                                                                                  width:w height:h mipmapped:NO];
+                                                                                  width:w height:h
+                                                                              mipmapped:(mipmapped ? YES : NO)];
+    // generateMipmapsForTexture renders into the mip levels, so mipmapped
+    // textures need RenderTarget usage even when never bound as one directly.
     d.usage = MTLTextureUsageShaderRead
             | (storage_write ? MTLTextureUsageShaderWrite : 0)
-            | (render_target ? MTLTextureUsageRenderTarget : 0);
+            | (render_target || mipmapped ? MTLTextureUsageRenderTarget : 0);
     d.storageMode = MTLStorageModePrivate;
     id<MTLTexture> t = [dev newTextureWithDescriptor:d];
     return { (__bridge_retained void*)t, w, h, f };

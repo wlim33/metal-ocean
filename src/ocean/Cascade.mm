@@ -48,7 +48,10 @@ void Cascade::init(const MetalContext& ctx, PipelineCache& cache, const CascadeP
     dxdz_intermediate_ = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
     dxdz_field_        = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
     disp_              = make_texture_2d(ctx, N, N, TexFormat::RGBA16F, true, false);
-    normal_            = make_texture_2d(ctx, N, N, TexFormat::RGBA16F, true, false);
+    // Normals are sampled heavily minified toward the horizon; without mips
+    // those fetches thrash the texture cache (~2x fragment cost) and shimmer.
+    // Levels are regenerated each frame in encode_mipgen().
+    normal_            = make_texture_2d(ctx, N, N, TexFormat::RGBA16F, true, false, true);
 
     uniforms_ = make_buffer(ctx, sizeof(CascadeUniforms), true);
 
@@ -118,6 +121,11 @@ void Cascade::encode(void* compute_encoder, float time, const CascadeParams& p) 
     [enc setTexture:(__bridge id<MTLTexture>)disp_.handle       atIndex:2];
     [enc setTexture:(__bridge id<MTLTexture>)normal_.handle     atIndex:3];
     dispatch_n2(pso_post_);
+}
+
+void Cascade::encode_mipgen(void* blit_encoder) {
+    id<MTLBlitCommandEncoder> blit = (__bridge id<MTLBlitCommandEncoder>)blit_encoder;
+    [blit generateMipmapsForTexture:(__bridge id<MTLTexture>)normal_.handle];
 }
 
 }

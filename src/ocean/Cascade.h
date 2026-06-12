@@ -22,6 +22,7 @@ public:
     void init(const MetalContext& ctx, PipelineCache& cache, const CascadeParams& p);
     void rebuild_h0(const MetalContext& ctx, const CascadeParams& p);
     void encode(void* compute_encoder, float time, const CascadeParams& p);
+    void encode_mipgen(void* blit_encoder);
 
     void* displacement_handle() const { return disp_.handle; }
     void* normal_handle()       const { return normal_.handle; }

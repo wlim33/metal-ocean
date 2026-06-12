@@ -12,6 +12,7 @@ public:
     void init(const MetalContext& ctx, PipelineCache& cache, const Config& cfg);
     void rebuild_if_dirty(const MetalContext& ctx, const Config& cfg);
     void encode(void* compute_encoder, float time, const Config& cfg);
+    void encode_mipgen(void* blit_encoder, const Config& cfg);
 
     int          count() const { return (int)cascades_.size(); }
     Cascade*     cascade(int i) { return cascades_[i].get(); }

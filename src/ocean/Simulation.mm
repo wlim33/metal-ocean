@@ -62,4 +62,10 @@ void Simulation::encode(void* enc, float time, const Config& cfg) {
         cascades_[i]->encode(enc, time, make_params(cfg, i));
     }
 }
+
+void Simulation::encode_mipgen(void* blit_encoder, const Config& cfg) {
+    for (int i = 0; i < (int)cascades_.size() && i < cfg.cascade_count; ++i) {
+        cascades_[i]->encode_mipgen(blit_encoder);
+    }
+}
 }
