@@ -5,6 +5,7 @@
 namespace mo {
 void draw_debug_panel(App& app) {
     auto& c = app.config();
+    ImGui::SetNextWindowSize(ImVec2(380.0f, 0.0f), ImGuiCond_FirstUseEver);
     ImGui::Begin("metal-ocean");
     ImGui::Text("frame dt: %.2f ms", app.clock().delta_seconds() * 1000.0);
 
