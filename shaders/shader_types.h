@@ -63,8 +63,12 @@ struct OceanSurfaceUniforms {
     float base_thickness_m;
     vec3  sss_color;
     float sss_strength;
-    float foam_bias;
+    float foam_bias;          // eps: J level where breaking starts
     float foam_albedo;
+    float foam_detail_scale;
+    float sss_view_boost;
+    float sss_view_power;
     float displacement_range_m;
     int   debug_view;
+    float _pad1;
 };

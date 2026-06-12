@@ -88,8 +88,11 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
     su.base_thickness_m = cfg.shading.base_thickness_m;
     su.sss_color = (simd_float3){cfg.shading.sss_color.x, cfg.shading.sss_color.y, cfg.shading.sss_color.z};
     su.sss_strength = cfg.shading.sss_strength;
-    // su.foam_bias / su.foam_albedo are wired up when the foam shading path
-    // lands (sea-foam plan Task 7); until then the shader's mask is 0.
+    su.sss_view_boost    = cfg.shading.sss_view_boost;
+    su.sss_view_power    = cfg.shading.sss_view_power;
+    su.foam_bias         = cfg.foam.bias;
+    su.foam_albedo       = cfg.foam.albedo;
+    su.foam_detail_scale = cfg.foam.detail_scale;
     su.displacement_range_m = cfg.displacement_range_m;
     su.debug_view = debug_view;
     std::memcpy(surf_buf_[slot].cpu_ptr, &su, sizeof(su));
@@ -104,8 +107,12 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
     for (int i = 0; i < cascade_count; ++i) {
         [enc setVertexTexture:(__bridge id<MTLTexture>)cascades[i]->displacement_handle() atIndex:i];
         [enc setFragmentTexture:(__bridge id<MTLTexture>)cascades[i]->normal_handle() atIndex:i];
+        [enc setFragmentTexture:(__bridge id<MTLTexture>)cascades[i]->foam_handle()
+                        atIndex:MAX_CASCADES + 1 + i];
     }
     [enc setFragmentTexture:(__bridge id<MTLTexture>)sky.cubemap_handle() atIndex:MAX_CASCADES];
+    [enc setFragmentTexture:(__bridge id<MTLTexture>)foam_detail_.handle
+                    atIndex:2 * MAX_CASCADES + 1];
 
     [enc drawIndexedPrimitives:MTLPrimitiveTypeTriangle
                     indexCount:index_count_[slot]
