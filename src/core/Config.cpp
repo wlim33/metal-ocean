@@ -60,11 +60,12 @@ float load_clamped(const toml::table& t, const char* table_name, const char* key
 }
 
 void load_shading(const toml::table& t, ShadingConfig& s, LoadResult& r) {
-    warn_keys(t, {"sss_strength","sss_view_boost","sss_view_power",
+    warn_keys(t, {"sss_strength","sss_view_boost","sss_view_power","scatter_strength",
                   "depth_fog_density","base_thickness_m","tonemap"}, "shading", r);
     s.sss_strength      = load_clamped(t, "shading", "sss_strength",      s.sss_strength,      0.0f, 4.0f,  r);
     s.sss_view_boost    = load_clamped(t, "shading", "sss_view_boost",    s.sss_view_boost,    0.0f, 2.0f,  r);
     s.sss_view_power    = load_clamped(t, "shading", "sss_view_power",    s.sss_view_power,    1.0f, 8.0f,  r);
+    s.scatter_strength  = load_clamped(t, "shading", "scatter_strength",  s.scatter_strength,  0.0f, 2.0f,  r);
     s.depth_fog_density = load_clamped(t, "shading", "depth_fog_density", s.depth_fog_density, 0.0f, 0.5f,  r);
     s.base_thickness_m  = load_clamped(t, "shading", "base_thickness_m",  s.base_thickness_m,  0.0f, 20.0f, r);
     if (auto* tn = t.get("tonemap")) {
@@ -149,6 +150,7 @@ LoadResult apply_overrides(LoadResult in, const std::vector<std::string>& kv) {
         else if (key == "foam.detail_scale")  in.config.foam.detail_scale  = std::stof(val);
         else if (key == "shading.sss_view_boost") in.config.shading.sss_view_boost = std::stof(val);
         else if (key == "shading.sss_view_power") in.config.shading.sss_view_power = std::stof(val);
+        else if (key == "shading.scatter_strength") in.config.shading.scatter_strength = std::stof(val);
         else in.warnings.push_back("unknown override key: " + key);
     }
     return in;
@@ -184,6 +186,7 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.shading.sss_strength,      sizeof(c.shading.sss_strength),      h);
     h = fnv1a64(&c.shading.sss_view_boost,    sizeof(c.shading.sss_view_boost),    h);
     h = fnv1a64(&c.shading.sss_view_power,    sizeof(c.shading.sss_view_power),    h);
+    h = fnv1a64(&c.shading.scatter_strength, sizeof(c.shading.scatter_strength), h);
     h = fnv1a64(&c.shading.depth_fog_density, sizeof(c.shading.depth_fog_density), h);
     h = fnv1a64(&c.shading.base_thickness_m,  sizeof(c.shading.base_thickness_m),  h);
     h = fnv1a64(&c.shading.sun_shininess,     sizeof(c.shading.sun_shininess),     h);

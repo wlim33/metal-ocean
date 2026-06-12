@@ -3,7 +3,7 @@
 
 TEST(Config, DefaultsLoadFromEmptyToml) {
     auto result = mo::load_config_from_string("");
-    EXPECT_EQ(result.config.cascade_count, 3);
+    EXPECT_EQ(result.config.cascade_count, 2);
     EXPECT_EQ(result.config.cascades[0].resolution, 256);
     EXPECT_FLOAT_EQ(result.config.wave.wind_speed_mps, 12.0f);
     EXPECT_TRUE(result.warnings.empty());
@@ -78,6 +78,7 @@ TEST(Config, ShadingTableNowLoads) {
 sss_strength = 1.25
 sss_view_boost = 0.9
 sss_view_power = 5.0
+scatter_strength = 1.3
 depth_fog_density = 0.1
 base_thickness_m = 2.0
 tonemap = "reinhard"
@@ -86,6 +87,7 @@ tonemap = "reinhard"
     EXPECT_FLOAT_EQ(r.config.shading.sss_strength, 1.25f);
     EXPECT_FLOAT_EQ(r.config.shading.sss_view_boost, 0.9f);
     EXPECT_FLOAT_EQ(r.config.shading.sss_view_power, 5.0f);
+    EXPECT_FLOAT_EQ(r.config.shading.scatter_strength, 1.3f);
     EXPECT_FLOAT_EQ(r.config.shading.depth_fog_density, 0.1f);
     EXPECT_FLOAT_EQ(r.config.shading.base_thickness_m, 2.0f);
     EXPECT_EQ(r.config.shading.tonemap, mo::Tonemap::Reinhard);
@@ -117,17 +119,18 @@ TEST(Config, HashSensitiveToEveryFoamKey) {
     flip([](mo::Config& c) { c.foam.detail_scale = 1.0f; });
     flip([](mo::Config& c) { c.shading.sss_view_boost = 1.5f; });
     flip([](mo::Config& c) { c.shading.sss_view_power = 7.0f; });
+    flip([](mo::Config& c) { c.shading.scatter_strength = 1.8f; });
 }
 
 TEST(Config, NewDefaults) {
     mo::Config c;
-    EXPECT_FLOAT_EQ(c.wave.choppiness, 1.15f);
-    EXPECT_FLOAT_EQ(c.foam.bias, 0.85f);
+    EXPECT_FLOAT_EQ(c.wave.choppiness, 1.35f);
+    EXPECT_FLOAT_EQ(c.foam.bias, 0.75f);
 }
 
 TEST(Config, WrongTypedValuesWarnAndKeepDefault) {
     auto r = mo::load_config_from_string("[foam]\nbias = \"high\"\n");
-    EXPECT_FLOAT_EQ(r.config.foam.bias, 0.85f);  // default kept
+    EXPECT_FLOAT_EQ(r.config.foam.bias, 0.75f);  // default kept
     ASSERT_EQ(r.warnings.size(), 1u);
     EXPECT_NE(r.warnings[0].find("wrong type"), std::string::npos);
 }

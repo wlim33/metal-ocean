@@ -77,10 +77,20 @@ fragment float4 ocean_fs(
 
     float view_depth = max(0.0, -in.world_pos.y) + S.base_thickness_m;
     float3 absorb   = exp(-S.depth_fog_density * view_depth * S.extinction_rgb);
-    float3 refraction = S.deep_water_color * absorb;
+    // "Clear water" body (SoT-verified mechanism, moderate): blend the deep
+    // color toward the scatter color where light plausibly exits toward the
+    // eye — grazing views through the upper water, wave peaks, and sunward
+    // paths. Troughs stay deep; the contrast is what reads as clarity.
+    float h_norm_body = saturate(in.world_pos.y / S.displacement_range_m);
+    float grazing  = pow(1.0 - nv, 2.0);
+    float sunward  = 0.4 + 0.6 * max(dot(-V, sun), 0.0);
+    float scatter_k = saturate(S.scatter_strength *
+                               (0.3 * grazing + 0.7 * h_norm_body * sunward));
+    float3 body = mix(S.deep_water_color, S.sss_color, scatter_k);
+    float3 refraction = body * absorb;
 
     // SSS with view-through crest term (design §4.3)
-    float h_norm = saturate((in.world_pos.y) / S.displacement_range_m);
+    float h_norm = h_norm_body;
     float back_light = max(0.0, dot(n, -sun));
     float view_through = S.sss_view_boost * pow(max(dot(-V, sun), 0.0), S.sss_view_power);
     float3 sss = S.sss_strength * h_norm * (back_light + view_through) * S.sss_color;
@@ -97,7 +107,12 @@ fragment float4 ocean_fs(
     float d_hi = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale).r;
     float d_lo = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale * 0.25).r;
     float detail = mix(d_lo * 0.7, d_hi * 1.3, P);
-    float foam_mask = saturate(max(W, P * detail));
+    // The dispersal blur diffuses a few-percent P tail across the whole
+    // surface at steady state, which the detail texture exposes as a pale
+    // film. Shape it out: below ~0.12 renders as nothing, full strength by
+    // ~0.55. Raw P still drives the age crossfade above.
+    float P_shaped = smoothstep(0.12, 0.55, P);
+    float foam_mask = saturate(max(W, P_shaped * detail));
 
     // Foam material (design §4.2): Lambertian layer, kills the mirror term.
     // Sun term is irradiance·(N·L)/π (proper Lambertian); the mip-3 cube

@@ -35,6 +35,7 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("sss str",    &c.shading.sss_strength,   0.0f, 4.0f);
         ImGui::SliderFloat("sss view boost", &c.shading.sss_view_boost, 0.0f, 2.0f);
         ImGui::SliderFloat("sss view power", &c.shading.sss_view_power, 1.0f, 8.0f);
+        ImGui::SliderFloat("scatter",        &c.shading.scatter_strength, 0.0f, 2.0f);
         ImGui::SliderFloat("fog density",&c.shading.depth_fog_density, 0.0f, 0.5f);
     }
     if (ImGui::CollapsingHeader("Foam", ImGuiTreeNodeFlags_DefaultOpen)) {

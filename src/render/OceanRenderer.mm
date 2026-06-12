@@ -90,6 +90,7 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
     su.sss_strength = cfg.shading.sss_strength;
     su.sss_view_boost    = cfg.shading.sss_view_boost;
     su.sss_view_power    = cfg.shading.sss_view_power;
+    su.scatter_strength  = cfg.shading.scatter_strength;
     su.foam_bias         = cfg.foam.bias;
     su.foam_albedo       = cfg.foam.albedo;
     su.foam_detail_scale = cfg.foam.detail_scale;

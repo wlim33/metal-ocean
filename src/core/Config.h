@@ -20,16 +20,20 @@ struct CascadeConfig {
 struct WaveConfig {
     float wind_speed_mps = 12.0f;
     float wind_dir_rad   = 0.5f;
-    float choppiness     = 1.15f;
-    float swell          = 0.3f;
+    float choppiness     = 1.35f;
+    float swell          = 0.55f;
     // Phillips spectrum amplitude. Wave height scales with sqrt(amplitude).
-    float amplitude      = 4000.0f;
+    float amplitude      = 7000.0f;
 };
 
 struct ShadingConfig {
     float sss_strength   = 0.5f;
     float sss_view_boost = 0.6f;   // view-through crest SSS (design §4.3)
     float sss_view_power = 3.0f;
+    // Broad subsurface scatter: blends deep_water_color toward sss_color
+    // across wave faces (grazing view + peaks + sunward) — the "clear water"
+    // term; SoT-style, kept physically moderate at 0.9.
+    float scatter_strength = 0.9f;
     glm::vec3 sss_color  {0.1f, 0.55f, 0.45f};
     float depth_fog_density = 0.05f;
     float base_thickness_m  = 4.0f;
@@ -42,9 +46,9 @@ struct ShadingConfig {
 
 // Whitecap foam (design §3, §7). bias = J level where breaking starts.
 struct FoamConfig {
-    float bias          = 0.85f;
+    float bias          = 0.75f;
     float gain          = 1.5f;
-    float decay_seconds = 4.0f;
+    float decay_seconds = 3.0f;
     float dispersal     = 0.7f;   // blur radius, texels; 0 = off
     float albedo        = 0.55f;
     float detail_scale  = 0.35f;
@@ -66,12 +70,12 @@ struct BenchConfig {
 };
 
 struct Config {
-    int cascade_count = 3;
+    int cascade_count = 2;
     // Patch sizes use coprime/irrational-ish ratios so the cascades don't
     // reinforce on a regular grid (which produces visible tile seams).
     std::array<CascadeConfig, 4> cascades {
-        CascadeConfig{271.0f, 256, 1.0f},
-        CascadeConfig{ 73.0f, 256, 1.0f},
+        CascadeConfig{419.0f, 256, 0.65f},
+        CascadeConfig{ 97.0f, 256, 0.35f},
         CascadeConfig{ 17.0f, 256, 1.0f},
         CascadeConfig{  3.7f, 256, 1.0f}};
     Precision spectrum_precision = Precision::Fp32;
@@ -80,7 +84,7 @@ struct Config {
     WaveConfig wave;
     int grid_cols = 256;
     int grid_rows = 256;
-    float displacement_range_m = 8.0f;
+    float displacement_range_m = 12.0f;
 
     SkyConfig sky;
     ShadingConfig shading;

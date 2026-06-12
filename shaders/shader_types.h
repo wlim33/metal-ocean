@@ -70,5 +70,5 @@ struct OceanSurfaceUniforms {
     float sss_view_power;
     float displacement_range_m;
     int   debug_view;
-    float _pad1;
+    float scatter_strength;
 };
