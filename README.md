@@ -5,29 +5,22 @@
 ![C++](https://img.shields.io/badge/C%2B%2B-20-00599C)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Real-time ocean water for macOS. Tessendorf-style FFT waves, simulated and
-shaded entirely on the GPU with Metal. No engine underneath, just AppKit and
-C++20 with a thin Objective-C++ layer.
+Real-time FFT ocean renderer for macOS. Metal + AppKit, C++20 / Objective-C++.
 
 ![metal-ocean](docs/screenshot.jpg)
 
-Each frame, a Phillips spectrum (with a swell parameter for directional
-spread) is advanced in time and inverse-FFT'd — Stockham radix-2, all in
-compute — into displacement and normal maps for three wave cascades: 271 m,
-73 m and 17 m patches at 256×256 each. The maps displace a projected grid
-(Johanson 2004), so the mesh always fills the frustum regardless of camera
-height. Whitecaps come from thresholding the Jacobian of the horizontal
-displacement; shading is Fresnel over a Preetham analytic sky baked to a
-cubemap, plus sun specular, a depth-fog refraction approximation,
-subsurface scatter on backlit crests, and ACES tonemapping. The whole thing
-costs about 1.0–1.5 ms of GPU time per frame on an Apple Silicon laptop.
+- Phillips spectrum with directional swell
+- Three cascades (271 / 73 / 17 m patches at 256×256), Stockham radix-2 inverse FFT in compute
+- Displacement, normal and Jacobian foam maps
+- Projected-grid surface (Johanson 2004)
+- Preetham sky baked to a cubemap
+- Fresnel, sun specular, depth-fog refraction, backlit-crest subsurface scatter, ACES tonemap
 
 ## Building
 
-Needs macOS 13+ (the shaders target Metal 3), Xcode for the Metal compiler,
-CMake 3.24+ and Ninja. Dependencies (glm, toml++, Dear ImGui, googletest)
-are fetched by CMake on the first configure, so that step needs network
-access.
+macOS 13+ (Metal 3), Xcode, CMake 3.24+, Ninja. Dependencies (glm, toml++,
+Dear ImGui, googletest) are fetched by CMake on first configure, which
+therefore needs network access.
 
 ```sh
 cmake -B build -G Ninja
@@ -37,13 +30,11 @@ cmake --build build --target run   # builds and opens metal-ocean.app
 
 ## Running
 
-Drag to orbit the camera, scroll to zoom. Wind speed, choppiness, swell,
-sun position, turbidity, foam and the rest are live sliders in the ImGui
-panel.
+Drag to orbit, scroll to zoom. Wave, sky and shading parameters are live
+sliders in the ImGui panel.
 
-Settings come from `default-config.toml`, which is baked into the app
-bundle at build time. Point at another file with `--config`, or override
-single values with repeatable `--set`:
+Settings load from `default-config.toml`, baked into the bundle at build
+time. Override with `--config <file>` or repeatable `--set`:
 
 ```sh
 ./build/metal-ocean.app/Contents/MacOS/metal-ocean \
@@ -56,9 +47,9 @@ single values with repeatable `--set`:
 ./build/metal-ocean.app/Contents/MacOS/metal-ocean --set bench.bench_mode=true
 ```
 
-flies a deterministic camera orbit (60 warm-up + 600 measured frames) and
-writes per-frame CPU/GPU timings, drawable wait and a config hash to
-`bench-<timestamp>.csv` in the working directory.
+runs a deterministic camera orbit (60 warm-up + 600 measured frames) and
+writes per-frame CPU/GPU timings to `bench-<timestamp>.csv` in the working
+directory.
 
 ## Tests
 
