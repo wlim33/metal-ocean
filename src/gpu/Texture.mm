@@ -12,6 +12,7 @@ static MTLPixelFormat pf(TexFormat f) {
         case TexFormat::RGBA8Unorm_sRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
         case TexFormat::BGRA8Unorm_sRGB: return MTLPixelFormatBGRA8Unorm_sRGB;
         case TexFormat::R32F:            return MTLPixelFormatR32Float;
+        case TexFormat::R8Unorm:         return MTLPixelFormatR8Unorm;
     }
 }
 

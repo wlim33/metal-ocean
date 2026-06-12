@@ -113,4 +113,21 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
                    indexBuffer:(__bridge id<MTLBuffer>)ibo_[slot].handle
              indexBufferOffset:0];
 }
+
+void OceanRenderer::bake_foam_detail_if_needed(const MetalContext& ctx, void* command_buffer,
+                                               PipelineCache& cache) {
+    if (foam_detail_baked_) return;
+    foam_detail_ = make_texture_2d(ctx, 512, 512, TexFormat::R8Unorm, true, false, true);
+    void* pso = cache.compute_pso(ctx, "foam_detail_kernel");
+    id<MTLCommandBuffer> cb = (__bridge id<MTLCommandBuffer>)command_buffer;
+    id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
+    [ce setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso];
+    [ce setTexture:(__bridge id<MTLTexture>)foam_detail_.handle atIndex:0];
+    [ce dispatchThreads:MTLSizeMake(512, 512, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
+    [ce endEncoding];
+    id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
+    [blit generateMipmapsForTexture:(__bridge id<MTLTexture>)foam_detail_.handle];
+    [blit endEncoding];
+    foam_detail_baked_ = true;
+}
 }
