@@ -30,6 +30,8 @@ public:
     void encode(void* compute_encoder, float time, const CascadeParams& p);
     void encode_mipgen(void* blit_encoder);
     // Profiling split: encode() == encode_spectrum + encode_fft + encode_post.
+    // Note: encode_post includes the foam_update dispatch, so split-mode
+    // "post" timings cover post_fft + foam together.
     void encode_spectrum(void* compute_encoder, float time, const CascadeParams& p);
     void encode_fft(void* compute_encoder, const CascadeParams& p);
     void encode_post(void* compute_encoder, const CascadeParams& p);

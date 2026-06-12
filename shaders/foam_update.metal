@@ -24,18 +24,24 @@ kernel void foam_update_kernel(
     float deposit = saturate(U.foam_gain * (U.foam_bias - j_own));
 
     // 3x3 tent blur of last frame's foam at radius foam_dispersal texels.
-    // dispersal = 0 degrades to a plain point read.
+    // level(0) is load-bearing: only the freshly-written texture gets new
+    // mips each frame, so foam_prev's higher mip levels are one frame stale.
     float2 texel = 1.0 / float2(U.N, U.N);
     float2 uv    = (float2(gid) + 0.5) * texel;
-    const float w[3] = {0.25, 0.5, 0.25};
-    float prev = 0.0;
-    for (int dy = -1; dy <= 1; ++dy)
-        for (int dx = -1; dx <= 1; ++dx)
-            prev += w[dx + 1] * w[dy + 1] *
-                    foam_prev.sample(smp, uv + float2(dx, dy) * U.foam_dispersal * texel,
-                                     level(0)).z;
+    float prev;
+    if (U.foam_dispersal > 0.0) {
+        const float w[3] = {0.25, 0.5, 0.25};
+        prev = 0.0;
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx)
+                prev += w[dx + 1] * w[dy + 1] *
+                        foam_prev.sample(smp, uv + float2(dx, dy) * U.foam_dispersal * texel,
+                                         level(0)).z;
+    } else {
+        prev = foam_prev.sample(smp, uv, level(0)).z;   // dispersal off: point read
+    }
 
-    float foam = max(deposit, prev * U.foam_decay);
+    float foam = max(deposit, prev * U.foam_decay_factor);
     // saturate at write: a NaN/Inf here would persist forever (design §8).
     foam_out.write(float4(k, k * k, saturate(foam), 0.0), gid);
 }
