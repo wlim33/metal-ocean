@@ -99,13 +99,16 @@ add_custom_command(OUTPUT ${METALLIB}
 add_custom_target(shaders DEPENDS ${METALLIB})
 add_dependencies(metal-ocean shaders)
 
-add_custom_command(TARGET metal-ocean POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${METALLIB}
-            $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default.metallib)
-
-add_custom_command(TARGET metal-ocean POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/default-config.toml
-            $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default-config.toml)
+# Bundle resources are dependency-tracked copies, NOT POST_BUILD hooks:
+# POST_BUILD only fires when the executable relinks, so shader-only or
+# config-only edits would leave a stale copy inside the bundle.
+add_custom_target(bundle_resources ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${METALLIB}
+            $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default.metallib
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/default-config.toml
+            $<TARGET_BUNDLE_CONTENT_DIR:metal-ocean>/Resources/default-config.toml
+    DEPENDS ${METALLIB} metal-ocean
+    VERBATIM)
 
 enable_testing()
 add_subdirectory(tests)
