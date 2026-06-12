@@ -40,14 +40,19 @@ void warn_keys(const toml::table& t, std::initializer_list<const char*> known,
         std::string key{k.str()};
         bool ok = false;
         for (auto* kn : known) if (key == kn) { ok = true; break; }
-        if (!ok) r.warnings.push_back(std::string("unknown key ") + table_name + "." + key);
+        if (!ok) r.warnings.push_back(std::string("unknown key: ") + table_name + "." + key);
     }
 }
 
 float load_clamped(const toml::table& t, const char* table_name, const char* key,
                    float cur, float lo, float hi, LoadResult& r) {
-    auto v = t[key].value<double>();
-    if (!v) return cur;
+    auto* node = t.get(key);
+    if (!node) return cur;                       // key absent — fine
+    auto v = node->value<double>();
+    if (!v) {
+        r.warnings.push_back(std::string(table_name) + "." + key + " has wrong type, ignored");
+        return cur;
+    }
     float f = (float)*v;
     if (f < lo || f > hi)
         r.warnings.push_back(std::string(table_name) + "." + key + " out of range, clamped");
@@ -62,11 +67,15 @@ void load_shading(const toml::table& t, ShadingConfig& s, LoadResult& r) {
     s.sss_view_power    = load_clamped(t, "shading", "sss_view_power",    s.sss_view_power,    1.0f, 8.0f,  r);
     s.depth_fog_density = load_clamped(t, "shading", "depth_fog_density", s.depth_fog_density, 0.0f, 0.5f,  r);
     s.base_thickness_m  = load_clamped(t, "shading", "base_thickness_m",  s.base_thickness_m,  0.0f, 20.0f, r);
-    if (auto v = t["tonemap"].value<std::string>()) {
-        if      (*v == "none")     s.tonemap = Tonemap::None;
-        else if (*v == "reinhard") s.tonemap = Tonemap::Reinhard;
-        else if (*v == "aces")     s.tonemap = Tonemap::Aces;
-        else r.warnings.push_back("unknown shading.tonemap: " + *v);
+    if (auto* tn = t.get("tonemap")) {
+        if (auto v = tn->value<std::string>()) {
+            if      (*v == "none")     s.tonemap = Tonemap::None;
+            else if (*v == "reinhard") s.tonemap = Tonemap::Reinhard;
+            else if (*v == "aces")     s.tonemap = Tonemap::Aces;
+            else r.warnings.push_back("unknown shading.tonemap: " + *v);
+        } else {
+            r.warnings.push_back("shading.tonemap has wrong type, ignored");
+        }
     }
 }
 
@@ -172,9 +181,13 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.sky.sun_azimuth_rad,    sizeof(c.sky.sun_azimuth_rad),    h);
     h = fnv1a64(&c.sky.turbidity,          sizeof(c.sky.turbidity),          h);
     // Shading
-    h = fnv1a64(&c.shading.sss_strength,   sizeof(c.shading.sss_strength),   h);
-    h = fnv1a64(&c.shading.sss_view_boost, sizeof(c.shading.sss_view_boost), h);
-    h = fnv1a64(&c.shading.sss_view_power, sizeof(c.shading.sss_view_power), h);
+    h = fnv1a64(&c.shading.sss_strength,      sizeof(c.shading.sss_strength),      h);
+    h = fnv1a64(&c.shading.sss_view_boost,    sizeof(c.shading.sss_view_boost),    h);
+    h = fnv1a64(&c.shading.sss_view_power,    sizeof(c.shading.sss_view_power),    h);
+    h = fnv1a64(&c.shading.depth_fog_density, sizeof(c.shading.depth_fog_density), h);
+    h = fnv1a64(&c.shading.base_thickness_m,  sizeof(c.shading.base_thickness_m),  h);
+    h = fnv1a64(&c.shading.sun_shininess,     sizeof(c.shading.sun_shininess),     h);
+    h = fnv1a64(&c.shading.tonemap,           sizeof(c.shading.tonemap),           h);
     // Foam
     h = fnv1a64(&c.foam.bias,          sizeof(c.foam.bias),          h);
     h = fnv1a64(&c.foam.gain,          sizeof(c.foam.gain),          h);
@@ -182,10 +195,6 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.foam.dispersal,     sizeof(c.foam.dispersal),     h);
     h = fnv1a64(&c.foam.albedo,        sizeof(c.foam.albedo),        h);
     h = fnv1a64(&c.foam.detail_scale,  sizeof(c.foam.detail_scale),  h);
-    h = fnv1a64(&c.shading.depth_fog_density, sizeof(c.shading.depth_fog_density), h);
-    h = fnv1a64(&c.shading.base_thickness_m,  sizeof(c.shading.base_thickness_m),  h);
-    h = fnv1a64(&c.shading.sun_shininess,     sizeof(c.shading.sun_shininess),     h);
-    h = fnv1a64(&c.shading.tonemap,           sizeof(c.shading.tonemap),           h);
     // Bench (hash bench_mode + frame counts; skip output_path to avoid string pointer instability)
     h = fnv1a64(&c.bench.bench_mode,      sizeof(c.bench.bench_mode),      h);
     h = fnv1a64(&c.bench.warmup_frames,   sizeof(c.bench.warmup_frames),   h);

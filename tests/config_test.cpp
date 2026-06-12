@@ -112,7 +112,7 @@ TEST(Config, HashSensitiveToEveryFoamKey) {
     flip([](mo::Config& c) { c.foam.bias = 0.5f; });
     flip([](mo::Config& c) { c.foam.gain = 3.0f; });
     flip([](mo::Config& c) { c.foam.decay_seconds = 1.0f; });
-    flip([](mo::Config& c) { c.foam.dispersal = 0.0f; });
+    flip([](mo::Config& c) { c.foam.dispersal += 1.0f; });
     flip([](mo::Config& c) { c.foam.albedo = 0.9f; });
     flip([](mo::Config& c) { c.foam.detail_scale = 1.0f; });
     flip([](mo::Config& c) { c.shading.sss_view_boost = 1.5f; });
@@ -123,4 +123,11 @@ TEST(Config, NewDefaults) {
     mo::Config c;
     EXPECT_FLOAT_EQ(c.wave.choppiness, 1.15f);
     EXPECT_FLOAT_EQ(c.foam.bias, 0.85f);
+}
+
+TEST(Config, WrongTypedValuesWarnAndKeepDefault) {
+    auto r = mo::load_config_from_string("[foam]\nbias = \"high\"\n");
+    EXPECT_FLOAT_EQ(r.config.foam.bias, 0.85f);  // default kept
+    ASSERT_EQ(r.warnings.size(), 1u);
+    EXPECT_NE(r.warnings[0].find("wrong type"), std::string::npos);
 }

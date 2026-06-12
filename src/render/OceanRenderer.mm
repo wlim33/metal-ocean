@@ -88,6 +88,8 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
     su.base_thickness_m = cfg.shading.base_thickness_m;
     su.sss_color = (simd_float3){cfg.shading.sss_color.x, cfg.shading.sss_color.y, cfg.shading.sss_color.z};
     su.sss_strength = cfg.shading.sss_strength;
+    // su.foam_bias / su.foam_albedo are wired up when the foam shading path
+    // lands (sea-foam plan Task 7); until then the shader's mask is 0.
     su.displacement_range_m = cfg.displacement_range_m;
     su.debug_view = debug_view;
     std::memcpy(surf_buf_[slot].cpu_ptr, &su, sizeof(su));
