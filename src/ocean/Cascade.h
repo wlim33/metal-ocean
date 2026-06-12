@@ -23,15 +23,21 @@ public:
     void rebuild_h0(const MetalContext& ctx, const CascadeParams& p);
     void encode(void* compute_encoder, float time, const CascadeParams& p);
     void encode_mipgen(void* blit_encoder);
+    // Profiling split: encode() == encode_spectrum + encode_fft + encode_post.
+    void encode_spectrum(void* compute_encoder, float time, const CascadeParams& p);
+    void encode_fft(void* compute_encoder, const CascadeParams& p);
+    void encode_post(void* compute_encoder, const CascadeParams& p);
 
     void* displacement_handle() const { return disp_.handle; }
     void* normal_handle()       const { return normal_.handle; }
 
 private:
     CascadeParams params_;
-    Texture h0_{}, htilde_{}, ifft_intermediate_{}, height_{};
-    // Packed horizontal displacement: D̂x + i·D̂z, one complex IFFT for both.
-    Texture dxdz_tilde_{}, dxdz_intermediate_{}, dxdz_field_{};
+    Texture h0_{};
+    // h-tilde (.xy) and the Tessendorf displacement spectrum D̂x + i·D̂z (.zw)
+    // share one RGBA32F texture, so each FFT pass transforms both fields in a
+    // single dispatch: tilde -> ifft_intermediate -> field.
+    Texture tilde_{}, ifft_intermediate_{}, field_{};
     Texture disp_{}, normal_{};
     Buffer  uniforms_{};
     void* pso_spectrum_ = nullptr;

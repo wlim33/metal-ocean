@@ -31,22 +31,10 @@ static void upload_h0(const MetalContext& ctx, Texture& tex, const std::vector<g
 void Cascade::init(const MetalContext& ctx, PipelineCache& cache, const CascadeParams& p) {
     params_ = p;
     int N = p.N;
-    // h0 uses RGBA32F precision; create directly (the generic make_texture_2d uses RGBA16F).
-    {
-        id<MTLDevice> dev = (__bridge id<MTLDevice>)ctx.device;
-        MTLTextureDescriptor* d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float
-                                                                                      width:N height:N mipmapped:NO];
-        d.usage = MTLTextureUsageShaderRead;
-        d.storageMode = MTLStorageModePrivate;
-        h0_.handle = (__bridge_retained void*)[dev newTextureWithDescriptor:d];
-        h0_.width = h0_.height = N; h0_.format = TexFormat::RGBA16F;
-    }
-    htilde_            = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
-    ifft_intermediate_ = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
-    height_            = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
-    dxdz_tilde_        = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
-    dxdz_intermediate_ = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
-    dxdz_field_        = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
+    h0_                = make_texture_2d(ctx, N, N, TexFormat::RGBA32F, false, false);
+    tilde_             = make_texture_2d(ctx, N, N, TexFormat::RGBA32F, true, false);
+    ifft_intermediate_ = make_texture_2d(ctx, N, N, TexFormat::RGBA32F, true, false);
+    field_             = make_texture_2d(ctx, N, N, TexFormat::RGBA32F, true, false);
     disp_              = make_texture_2d(ctx, N, N, TexFormat::RGBA16F, true, false);
     // Normals are sampled heavily minified toward the horizon; without mips
     // those fetches thrash the texture cache (~2x fragment cost) and shimmer.
@@ -73,54 +61,58 @@ void Cascade::rebuild_h0(const MetalContext& ctx, const CascadeParams& p) {
     upload_h0(ctx, h0_, data, p.N);
 }
 
-void Cascade::encode(void* compute_encoder, float time, const CascadeParams& p) {
+void Cascade::encode_spectrum(void* compute_encoder, float time, const CascadeParams& p) {
     id<MTLComputeCommandEncoder> enc = (__bridge id<MTLComputeCommandEncoder>)compute_encoder;
     int N = p.N;
 
     CascadeUniforms u{ N, p.size_m, time, p.choppiness };
     std::memcpy(uniforms_.cpu_ptr, &u, sizeof(u));
 
-    auto dispatch_n2 = [&](void* pso) {
-        [enc setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso];
-        MTLSize tg = MTLSizeMake(16, 16, 1);
-        MTLSize grid = MTLSizeMake(N, N, 1);
-        [enc dispatchThreads:grid threadsPerThreadgroup:tg];
-    };
-
-    // Spectrum: produces htilde (h) and packed dxdz_tilde (D̂x + i·D̂z) from h0.
+    // Spectrum: h0 -> h-tilde (.xy) + D̂x+i·D̂z (.zw) in one texture.
+    [enc setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso_spectrum_];
     [enc setBuffer:(__bridge id<MTLBuffer>)uniforms_.handle offset:0 atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)h0_.handle         atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)htilde_.handle     atIndex:1];
-    [enc setTexture:(__bridge id<MTLTexture>)dxdz_tilde_.handle atIndex:2];
-    dispatch_n2(pso_spectrum_);
+    [enc setTexture:(__bridge id<MTLTexture>)h0_.handle    atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)tilde_.handle atIndex:1];
+    [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
+}
 
-    // 2D IFFT for h and for the packed Dx+iDz: row pass then column pass.
+void Cascade::encode_fft(void* compute_encoder, const CascadeParams& p) {
+    id<MTLComputeCommandEncoder> enc = (__bridge id<MTLComputeCommandEncoder>)compute_encoder;
+    int N = p.N;
+
+    // 2D IFFT of the packed field: row pass then column pass.
     [enc setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso_fft_];
-    [enc setThreadgroupMemoryLength:N * sizeof(float) * 2 atIndex:0];
+    [enc setThreadgroupMemoryLength:(NSUInteger)N * sizeof(float) * 4 atIndex:0];
 
-    auto fft_pair = [&](void* in_h, void* mid_h, void* out_h) {
-        FftPassUniforms fu_h{ N, 0 };
-        [enc setBytes:&fu_h length:sizeof(fu_h) atIndex:0];
-        [enc setTexture:(__bridge id<MTLTexture>)in_h  atIndex:0];
-        [enc setTexture:(__bridge id<MTLTexture>)mid_h atIndex:1];
-        [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(N, 1, 1)];
-        FftPassUniforms fu_v{ N, 1 };
-        [enc setBytes:&fu_v length:sizeof(fu_v) atIndex:0];
-        [enc setTexture:(__bridge id<MTLTexture>)mid_h atIndex:0];
-        [enc setTexture:(__bridge id<MTLTexture>)out_h atIndex:1];
-        [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(1, N, 1)];
-    };
-    fft_pair(htilde_.handle,     ifft_intermediate_.handle, height_.handle);
-    fft_pair(dxdz_tilde_.handle, dxdz_intermediate_.handle, dxdz_field_.handle);
+    FftPassUniforms fu_h{ N, 0 };
+    [enc setBytes:&fu_h length:sizeof(fu_h) atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)tilde_.handle             atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)ifft_intermediate_.handle atIndex:1];
+    [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(N, 1, 1)];
+    FftPassUniforms fu_v{ N, 1 };
+    [enc setBytes:&fu_v length:sizeof(fu_v) atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)ifft_intermediate_.handle atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)field_.handle             atIndex:1];
+    [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(1, N, 1)];
+}
 
-    // Post-FFT: height + packed Dx/Dz -> disp + normal
+void Cascade::encode_post(void* compute_encoder, const CascadeParams& p) {
+    id<MTLComputeCommandEncoder> enc = (__bridge id<MTLComputeCommandEncoder>)compute_encoder;
+    int N = p.N;
+
+    // Post-FFT: packed h + Dx/Dz field -> disp + normal
     [enc setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso_post_];
     [enc setBuffer:(__bridge id<MTLBuffer>)uniforms_.handle offset:0 atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)height_.handle     atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)dxdz_field_.handle atIndex:1];
-    [enc setTexture:(__bridge id<MTLTexture>)disp_.handle       atIndex:2];
-    [enc setTexture:(__bridge id<MTLTexture>)normal_.handle     atIndex:3];
-    dispatch_n2(pso_post_);
+    [enc setTexture:(__bridge id<MTLTexture>)field_.handle  atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)disp_.handle   atIndex:1];
+    [enc setTexture:(__bridge id<MTLTexture>)normal_.handle atIndex:2];
+    [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
+}
+
+void Cascade::encode(void* compute_encoder, float time, const CascadeParams& p) {
+    encode_spectrum(compute_encoder, time, p);
+    encode_fft(compute_encoder, p);
+    encode_post(compute_encoder, p);
 }
 
 void Cascade::encode_mipgen(void* blit_encoder) {

@@ -8,6 +8,7 @@ static MTLPixelFormat pf(TexFormat f) {
     switch (f) {
         case TexFormat::RG32F:           return MTLPixelFormatRG32Float;
         case TexFormat::RGBA16F:         return MTLPixelFormatRGBA16Float;
+        case TexFormat::RGBA32F:         return MTLPixelFormatRGBA32Float;
         case TexFormat::RGBA8Unorm_sRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
         case TexFormat::BGRA8Unorm_sRGB: return MTLPixelFormatBGRA8Unorm_sRGB;
         case TexFormat::R32F:            return MTLPixelFormatR32Float;

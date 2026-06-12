@@ -8,11 +8,10 @@ static float omega(float2 k) {
 }
 
 kernel void spectrum_kernel(
-    texture2d<float, access::read>  h0          [[texture(0)]],
-    texture2d<float, access::write> htilde      [[texture(1)]],
-    texture2d<float, access::write> dxdz_tilde  [[texture(2)]],
-    constant CascadeUniforms&       U           [[buffer(0)]],
-    uint2 gid                                  [[thread_position_in_grid]]
+    texture2d<float, access::read>  h0      [[texture(0)]],
+    texture2d<float, access::write> tilde   [[texture(1)]],
+    constant CascadeUniforms&       U       [[buffer(0)]],
+    uint2 gid                              [[thread_position_in_grid]]
 ) {
     if (gid.x >= (uint)U.N || gid.y >= (uint)U.N) return;
     int ic = (int)gid.x - U.N / 2;
@@ -30,7 +29,6 @@ kernel void spectrum_kernel(
     float2 a  = float2(h0p.x * e1.x - h0p.y * e1.y, h0p.x * e1.y + h0p.y * e1.x);
     float2 b  = float2(h0p.z * e2.x - h0p.w * e2.y, h0p.z * e2.y + h0p.w * e2.x);
     float2 h  = a + b;
-    htilde.write(float4(h, 0, 0), gid);
 
     // Packed Tessendorf horizontal displacement:
     //   D̂x + i·D̂z = -i·ĥ·(kx + i·kz)/|k|
@@ -46,5 +44,6 @@ kernel void spectrum_kernel(
         float2 q   = k / kmag;
         dxdz = float2(mih.x * q.x - mih.y * q.y, mih.x * q.y + mih.y * q.x);
     }
-    dxdz_tilde.write(float4(dxdz, 0, 0), gid);
+    // h-tilde in .xy, Dx+i*Dz in .zw: one fft_kernel chain transforms both.
+    tilde.write(float4(h, dxdz), gid);
 }

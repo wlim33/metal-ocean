@@ -3,7 +3,7 @@
 namespace mo {
 struct MetalContext;
 
-enum class TexFormat { RG32F, RGBA16F, RGBA8Unorm_sRGB, BGRA8Unorm_sRGB, R32F };
+enum class TexFormat { RG32F, RGBA16F, RGBA32F, RGBA8Unorm_sRGB, BGRA8Unorm_sRGB, R32F };
 
 struct Texture {
     void*    handle = nullptr;
