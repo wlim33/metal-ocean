@@ -75,7 +75,7 @@ fragment float4 ocean_fs(
     float back_light = max(0.0, dot(n, -sun));
     float3 sss = S.sss_strength * h_norm * back_light * S.sss_color;
 
-    float foam_mask = saturate(S.foam_strength * (S.foam_threshold - fold_min));
+    float foam_mask = 0.0;
 
     float3 surface = mix(refraction, reflection, F) + sss;
     float3 final_color   = mix(surface, float3(1.0), foam_mask);

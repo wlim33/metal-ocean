@@ -20,16 +20,16 @@ struct CascadeConfig {
 struct WaveConfig {
     float wind_speed_mps = 12.0f;
     float wind_dir_rad   = 0.5f;
-    float choppiness     = 0.8f;
+    float choppiness     = 1.15f;
     float swell          = 0.3f;
     // Phillips spectrum amplitude. Wave height scales with sqrt(amplitude).
     float amplitude      = 4000.0f;
 };
 
 struct ShadingConfig {
-    float foam_threshold = 0.15f;
-    float foam_strength  = 1.0f;
     float sss_strength   = 0.5f;
+    float sss_view_boost = 0.6f;   // view-through crest SSS (design §4.3)
+    float sss_view_power = 3.0f;
     glm::vec3 sss_color  {0.1f, 0.55f, 0.45f};
     float depth_fog_density = 0.05f;
     float base_thickness_m  = 4.0f;
@@ -38,6 +38,16 @@ struct ShadingConfig {
     float sun_shininess        = 256.0f;
     glm::vec3 sun_color        {1.4f, 1.25f, 1.0f};
     Tonemap tonemap = Tonemap::Aces;
+};
+
+// Whitecap foam (design §3, §7). bias = J level where breaking starts.
+struct FoamConfig {
+    float bias          = 0.85f;
+    float gain          = 1.5f;
+    float decay_seconds = 4.0f;
+    float dispersal     = 0.7f;   // blur radius, texels; 0 = off
+    float albedo        = 0.55f;
+    float detail_scale  = 0.35f;
 };
 
 struct SkyConfig {
@@ -74,6 +84,7 @@ struct Config {
 
     SkyConfig sky;
     ShadingConfig shading;
+    FoamConfig foam;
 
     int max_in_flight_frames = 3;
     int target_fps_cap = 0;

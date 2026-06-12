@@ -32,8 +32,6 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("turbidity",&c.sky.turbidity,        1.0f, 10.0f);
     }
     if (ImGui::CollapsingHeader("Shading")) {
-        ImGui::SliderFloat("foam thresh",&c.shading.foam_threshold, 0.0f, 1.0f);
-        ImGui::SliderFloat("foam str",   &c.shading.foam_strength,  0.0f, 4.0f);
         ImGui::SliderFloat("sss str",    &c.shading.sss_strength,   0.0f, 4.0f);
         ImGui::SliderFloat("fog density",&c.shading.depth_fog_density, 0.0f, 0.5f);
     }

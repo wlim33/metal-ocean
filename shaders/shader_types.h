@@ -56,8 +56,8 @@ struct OceanSurfaceUniforms {
     float base_thickness_m;
     vec3  sss_color;
     float sss_strength;
-    float foam_threshold;
-    float foam_strength;
+    float foam_bias;
+    float foam_albedo;
     float displacement_range_m;
     int   debug_view;
 };
