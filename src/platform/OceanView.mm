@@ -1,4 +1,8 @@
 #import "platform/OceanView.h"
+#include <chrono>
+
+// Profiling: time spent blocked acquiring the drawable this frame.
+double mo_g_drawable_wait_ms = 0.0;
 
 @implementation OceanView {
     void (^_render)(id<MTLCommandBuffer>, MTLRenderPassDescriptor*);
@@ -67,7 +71,10 @@
 - (void)drawInMTKView:(MTKView*)view {
     if (!_render || !_queue) return;
     id<MTLCommandBuffer> cb = [_queue commandBuffer];
+    auto t0 = std::chrono::steady_clock::now();
     MTLRenderPassDescriptor* rp = view.currentRenderPassDescriptor;
+    mo_g_drawable_wait_ms = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - t0).count();
     if (rp) _render(cb, rp);
     if (view.currentDrawable) [cb presentDrawable:view.currentDrawable];
     [cb commit];

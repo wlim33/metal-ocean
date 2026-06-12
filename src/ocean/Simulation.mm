@@ -68,4 +68,15 @@ void Simulation::encode_mipgen(void* blit_encoder, const Config& cfg) {
         cascades_[i]->encode_mipgen(blit_encoder);
     }
 }
+
+void Simulation::encode_stage(void* enc, int stage, float time, const Config& cfg) {
+    for (int i = 0; i < (int)cascades_.size() && i < cfg.cascade_count; ++i) {
+        auto p = make_params(cfg, i);
+        switch (stage) {
+            case 0: cascades_[i]->encode_spectrum(enc, time, p); break;
+            case 1: cascades_[i]->encode_fft(enc, p); break;
+            case 2: cascades_[i]->encode_post(enc, p); break;
+        }
+    }
+}
 }

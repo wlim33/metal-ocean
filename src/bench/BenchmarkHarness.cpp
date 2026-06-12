@@ -33,6 +33,9 @@ void BenchmarkHarness::record(const FrameTiming& t) {
     if (frame_idx_ >= warmup_) {
         out_ << t.frame_idx << ',' << t.cpu_ms << ',' << t.gpu_total_ms
              << ',' << t.drawable_wait_ms << ',' << hash_ << '\n';
+        // Termination races the tail of the completed-handler queue; flush so
+        // a buffered partial batch isn't lost when the app exits.
+        out_.flush();
     }
     ++frame_idx_;
 }

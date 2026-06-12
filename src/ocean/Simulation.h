@@ -13,6 +13,8 @@ public:
     void rebuild_if_dirty(const MetalContext& ctx, const Config& cfg);
     void encode(void* compute_encoder, float time, const Config& cfg);
     void encode_mipgen(void* blit_encoder, const Config& cfg);
+    // Profiling split: stage 0 = spectrum, 1 = fft, 2 = post, across all cascades.
+    void encode_stage(void* compute_encoder, int stage, float time, const Config& cfg);
 
     int          count() const { return (int)cascades_.size(); }
     Cascade*     cascade(int i) { return cascades_[i].get(); }
