@@ -8,6 +8,7 @@
 #import "ui/DebugPanel.h"
 #import "render/OceanRenderer.h"
 #import "render/SkyRenderer.h"
+#import "render/SprayRenderer.h"
 #import "ocean/ProjectedGrid.h"
 #import "ocean/Simulation.h"
 #import "bench/BenchmarkHarness.h"
@@ -31,6 +32,7 @@ extern double mo_g_drawable_wait_ms;
     mo::ImGuiBackend _imgui;
     mo::OceanRenderer _ocean;
     mo::SkyRenderer _sky;
+    mo::SprayRenderer _spray;
     mo::Simulation _sim;
     mo::BenchmarkHarness _bench;
     int _frame_index;
@@ -82,6 +84,7 @@ extern double mo_g_drawable_wait_ms;
     _imgui.init(_ctx, (__bridge void*)_view);
     _ocean.init(_ctx, _cache);
     _sky.init(_ctx, _cache);
+    _spray.init(_ctx, _cache);
     _sim.init(_ctx, _cache, _app->config());
     _bench.start(_app->config(), mo::config_hash(_app->config()));
     _frame_index = 0;
@@ -164,16 +167,22 @@ extern double mo_g_drawable_wait_ms;
             self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),
                 self2->_app->config(), self2->_sim.data(), self2->_sim.count(),
                 self2->_sky, self2->_frame_index, self2->_app->debug_view);
+            self2->_spray.encode_draw((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
         };
         auto encode_mips = [&]() {
             id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
             self2->_sim.encode_mipgen((__bridge void*)blit, self2->_app->config());
+            self2->_spray.encode_counter_reset((__bridge void*)blit);
             [blit endEncoding];
         };
 
         if (!smp) {
             id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
             self2->_sim.encode((__bridge void*)ce, sim_time, self2->_app->config());
+            self2->_spray.encode_compute((__bridge void*)ce, self2->_frame_index,
+                                         (float)self2->_app->clock().delta_seconds(),
+                                         self2->_app->config(), self2->_app->camera(),
+                                         self2->_sim.data(), self2->_sim.count());
             [ce endEncoding];
             encode_mips();
             id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
@@ -188,6 +197,10 @@ extern double mo_g_drawable_wait_ms;
             cpd.sampleBufferAttachments[0].endOfEncoderSampleIndex   = 1;
             id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoderWithDescriptor:cpd];
             self2->_sim.encode((__bridge void*)ce, sim_time, self2->_app->config());
+            self2->_spray.encode_compute((__bridge void*)ce, self2->_frame_index,
+                                         (float)self2->_app->clock().delta_seconds(),
+                                         self2->_app->config(), self2->_app->camera(),
+                                         self2->_sim.data(), self2->_sim.count());
             [ce endEncoding];
             encode_mips();
             rp.colorAttachments[0].storeAction = MTLStoreActionStore;
@@ -212,6 +225,12 @@ extern double mo_g_drawable_wait_ms;
                 cpd.sampleBufferAttachments[0].endOfEncoderSampleIndex   = stage * 2 + 1;
                 id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoderWithDescriptor:cpd];
                 self2->_sim.encode_stage((__bridge void*)ce, stage, sim_time, self2->_app->config());
+                if (stage == 2) {
+                    self2->_spray.encode_compute((__bridge void*)ce, self2->_frame_index,
+                                                 (float)self2->_app->clock().delta_seconds(),
+                                                 self2->_app->config(), self2->_app->camera(),
+                                                 self2->_sim.data(), self2->_sim.count());
+                }
                 [ce endEncoding];
             }
             encode_mips();
@@ -239,6 +258,7 @@ extern double mo_g_drawable_wait_ms;
                 self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),
                     self2->_app->config(), self2->_sim.data(), self2->_sim.count(),
                     self2->_sky, self2->_frame_index, self2->_app->debug_view);
+                self2->_spray.encode_draw((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
             });
             if (!noui) {
                 MTLRenderPassDescriptor* rp3 = (MTLRenderPassDescriptor*)[rp copy];

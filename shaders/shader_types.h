@@ -77,3 +77,26 @@ struct OceanSurfaceUniforms {
     float foam_stretch;
     float foam_tear;
 };
+
+#define SPRAY_POOL 65536
+#define SPRAY_CANDIDATES 4096
+
+struct SprayUniforms {
+    vec3  camera_pos;
+    float dt;                  // CPU-clamped
+    vec3  wind_vel;            // wind_dir * wind_speed * wind_response
+    float gain;
+    float bias;
+    float lifetime_s;
+    float size_m;
+    float alpha;
+    float annulus_inner;       // 5
+    float annulus_outer;       // 150
+    int   frame_index;
+    int   cascade_count;
+    float cascade_size[MAX_CASCADES];
+    float inv_n;
+    float _pad0;
+    float _pad1;
+    float _pad2;
+};

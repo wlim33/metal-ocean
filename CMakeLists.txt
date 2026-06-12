@@ -21,6 +21,7 @@ set_source_files_properties(
     src/ui/ImGuiBackend.mm
     src/render/OceanRenderer.mm
     src/render/SkyRenderer.mm
+    src/render/SprayRenderer.mm
     src/ocean/Cascade.mm
     src/ocean/Simulation.mm
     src/bench/CounterSampler.mm
