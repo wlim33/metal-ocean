@@ -150,6 +150,7 @@ lifetime_s = 2.0
 wind_response = 1.1
 size_m = 0.8
 alpha = 0.4
+turbulence = 0.9
 )");
     EXPECT_TRUE(r.warnings.empty());
     EXPECT_FLOAT_EQ(r.config.spray.gain, 2.0f);
@@ -158,6 +159,7 @@ alpha = 0.4
     EXPECT_FLOAT_EQ(r.config.spray.wind_response, 1.1f);
     EXPECT_FLOAT_EQ(r.config.spray.size_m, 0.8f);
     EXPECT_FLOAT_EQ(r.config.spray.alpha, 0.4f);
+    EXPECT_FLOAT_EQ(r.config.spray.turbulence, 0.9f);
 }
 
 TEST(Config, SprayClampsAndOverrides) {
@@ -180,4 +182,5 @@ TEST(Config, HashSensitiveToEverySprayKey) {
     flip([](mo::Config& c) { c.spray.wind_response += 0.5f; });
     flip([](mo::Config& c) { c.spray.size_m += 0.5f; });
     flip([](mo::Config& c) { c.spray.alpha += 0.2f; });
+    flip([](mo::Config& c) { c.spray.turbulence += 0.3f; });
 }

@@ -96,7 +96,7 @@ struct SprayUniforms {
     int   cascade_count;
     float cascade_size[MAX_CASCADES];
     float inv_n;
-    float _pad0;
+    float turbulence;          // per-particle motion variation, 0 = uniform
     float _pad1;
     float _pad2;
 };

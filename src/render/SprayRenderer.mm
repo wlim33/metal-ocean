@@ -82,6 +82,7 @@ void SprayRenderer::encode_compute(void* compute_encoder, int frame_index, float
     u.lifetime_s   = cfg.spray.lifetime_s;
     u.size_m       = cfg.spray.size_m;
     u.alpha        = cfg.spray.alpha;
+    u.turbulence   = cfg.spray.turbulence;
     u.annulus_inner = 5.0f;
     u.annulus_outer = 150.0f;
     u.frame_index   = frame_index;

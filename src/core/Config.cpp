@@ -81,13 +81,14 @@ void load_shading(const toml::table& t, ShadingConfig& s, LoadResult& r) {
 }
 
 void load_spray(const toml::table& t, SprayConfig& s, LoadResult& r) {
-    warn_keys(t, {"gain","bias","lifetime_s","wind_response","size_m","alpha"}, "spray", r);
+    warn_keys(t, {"gain","bias","lifetime_s","wind_response","size_m","alpha","turbulence"}, "spray", r);
     s.gain          = load_clamped(t, "spray", "gain",          s.gain,          0.0f,  8.0f, r);
     s.bias          = load_clamped(t, "spray", "bias",          s.bias,          0.0f,  1.5f, r);
     s.lifetime_s    = load_clamped(t, "spray", "lifetime_s",    s.lifetime_s,    0.2f,  5.0f, r);
     s.wind_response = load_clamped(t, "spray", "wind_response", s.wind_response, 0.0f,  2.0f, r);
-    s.size_m        = load_clamped(t, "spray", "size_m",        s.size_m,        0.05f, 2.0f, r);
+    s.size_m        = load_clamped(t, "spray", "size_m",        s.size_m,        0.1f,  2.0f, r);
     s.alpha         = load_clamped(t, "spray", "alpha",         s.alpha,         0.0f,  1.0f, r);
+    s.turbulence    = load_clamped(t, "spray", "turbulence",    s.turbulence,    0.0f,  1.0f, r);
 }
 
 void load_foam(const toml::table& t, FoamConfig& f, LoadResult& r) {
@@ -169,6 +170,7 @@ LoadResult apply_overrides(LoadResult in, const std::vector<std::string>& kv) {
         else if (key == "spray.wind_response") in.config.spray.wind_response = std::stof(val);
         else if (key == "spray.size_m")       in.config.spray.size_m       = std::stof(val);
         else if (key == "spray.alpha")        in.config.spray.alpha        = std::stof(val);
+        else if (key == "spray.turbulence")   in.config.spray.turbulence   = std::stof(val);
         else if (key == "shading.sss_view_boost") in.config.shading.sss_view_boost = std::stof(val);
         else if (key == "shading.sss_view_power") in.config.shading.sss_view_power = std::stof(val);
         else if (key == "shading.scatter_strength") in.config.shading.scatter_strength = std::stof(val);
@@ -228,6 +230,7 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.spray.wind_response, sizeof(c.spray.wind_response), h);
     h = fnv1a64(&c.spray.size_m,        sizeof(c.spray.size_m),        h);
     h = fnv1a64(&c.spray.alpha,         sizeof(c.spray.alpha),         h);
+    h = fnv1a64(&c.spray.turbulence,    sizeof(c.spray.turbulence),    h);
     // Bench (hash bench_mode + frame counts; skip output_path to avoid string pointer instability)
     h = fnv1a64(&c.bench.bench_mode,      sizeof(c.bench.bench_mode),      h);
     h = fnv1a64(&c.bench.warmup_frames,   sizeof(c.bench.warmup_frames),   h);

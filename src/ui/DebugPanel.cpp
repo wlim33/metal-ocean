@@ -53,8 +53,9 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("bias##spray",     &c.spray.bias,          0.0f, 1.5f);
         ImGui::SliderFloat("lifetime s",      &c.spray.lifetime_s,    0.2f, 5.0f);
         ImGui::SliderFloat("wind response",   &c.spray.wind_response, 0.0f, 2.0f);
-        ImGui::SliderFloat("size m",          &c.spray.size_m,        0.05f, 2.0f);
+        ImGui::SliderFloat("size m",          &c.spray.size_m,        0.1f, 2.0f);
         ImGui::SliderFloat("alpha##spray",    &c.spray.alpha,         0.0f, 1.0f);
+        ImGui::SliderFloat("turbulence",      &c.spray.turbulence,    0.0f, 1.0f);
     }
     if (ImGui::CollapsingHeader("Debug view")) {
         const char* names[] = {"final","normal","folding","fresnel","reflection",

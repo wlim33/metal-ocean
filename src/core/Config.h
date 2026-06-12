@@ -62,8 +62,9 @@ struct SprayConfig {
     float bias          = 0.7f;    // J threshold; deeper than foam's 0.75
     float lifetime_s    = 1.2f;
     float wind_response = 0.85f;   // launch speed fraction of wind speed
-    float size_m        = 0.5f;
+    float size_m        = 0.3f;
     float alpha         = 0.25f;
+    float turbulence    = 0.6f;   // per-particle motion variation, 0 = uniform
 };
 
 struct SkyConfig {

@@ -27,18 +27,38 @@ kernel void spray_update_kernel(
     float3 vel = float3(pt.vel);
     float3 pos = float3(pt.pos);
 
-    // Horizontal axes relax toward the wind (advection); vertical integrates
-    // weak gravity with weaker drag (spume floats) — shared-header math.
-    // MSL does not permit thread& to bind to vector elements (swizzles are
-    // not lvalues in Metal IR), so extract to scalars before calling the
-    // shared-header helpers, then write back.
-    // design §5: drag=2.0, g_eff=2.5; drag*0.3=0.6 vertical drag coefficient.
-    { float vx = vel.x; sprayc_relax(vx, U.wind_vel.x, 2.0, U.dt); vel.x = vx; }
-    { float vz = vel.z; sprayc_relax(vz, U.wind_vel.z, 2.0, U.dt); vel.z = vz; }
+    // Per-particle motion variation (U.turbulence): without it every particle
+    // relaxes to the same wind target with the same drag, and the flow reads
+    // as a uniform sheet. Factors hash on the SLOT so they are stable for a
+    // particle's whole life and deterministic for the bench.
+    float tb     = U.turbulence;
+    float wind_f = 1.0 + tb * (sprayc_hash01(gid, 7u)  - 0.5);        // 1 +- 0.5*tb
+    float drag_f = 1.0 + tb * 1.2 * (sprayc_hash01(gid, 13u) - 0.5);  // 1 +- 0.6*tb
+    float g_f    = 1.0 + tb * 0.8 * (sprayc_hash01(gid, 31u) - 0.5);  // 1 +- 0.4*tb
+    // Slow lateral weave around the mean flow, proportional to wind speed.
+    float2 wn   = float2(U.wind_vel.x, U.wind_vel.z);
+    float  wlen = max(length(wn), 1e-4);
+    wn /= wlen;
+    float2 wperp = float2(-wn.y, wn.x);
+    // Quasi-periodic weave: two sines at incommensurate per-particle
+    // frequencies never visibly repeat (a single sine reads as a metronome).
+    float  ph1 = 6.2831853 * sprayc_hash01(gid, 21u);
+    float  ph2 = 6.2831853 * sprayc_hash01(gid, 23u);
+    float  fr1 = 6.2831853 * (0.4 + 0.8 * sprayc_hash01(gid, 22u));   // 0.4-1.2 Hz
+    float  fr2 = fr1 * (1.618 + 0.6 * sprayc_hash01(gid, 24u));       // golden-ish ratio
+    float  osc = (sin(pt.age * fr1 + ph1) + 0.55 * sin(pt.age * fr2 + ph2))
+               * tb * 0.28 * wlen;
+    float  target_x = U.wind_vel.x * wind_f + wperp.x * osc;
+    float  target_z = U.wind_vel.z * wind_f + wperp.y * osc;
+
+    // Horizontal axes relax toward the per-particle wind target (advection);
+    // vertical integrates weak gravity with weaker drag - shared-header math.
     {
+        float vx = vel.x; sprayc_relax(vx, target_x, 2.0 * drag_f, U.dt); vel.x = vx;
+        float vz = vel.z; sprayc_relax(vz, target_z, 2.0 * drag_f, U.dt); vel.z = vz;
         float vy = vel.y;
         float vx_dummy = 0.0;
-        sprayc_integrate(vx_dummy, vy, 0.0, 2.0, 2.5, U.dt);
+        sprayc_integrate(vx_dummy, vy, 0.0, 2.0 * drag_f, 2.5 * g_f, U.dt);
         vel.y = vy;
     }
     pos += vel * U.dt;
