@@ -56,6 +56,16 @@ struct FoamConfig {
     float tear          = 0.8f;   // 0 = soft multiply edges, 1 = fully torn
 };
 
+// Wind-carried spume (crest-spray design §7). gain = 0 disables spray.
+struct SprayConfig {
+    float gain          = 1.0f;
+    float bias          = 0.7f;    // J threshold; deeper than foam's 0.75
+    float lifetime_s    = 1.2f;
+    float wind_response = 0.85f;   // launch speed fraction of wind speed
+    float size_m        = 0.5f;
+    float alpha         = 0.25f;
+};
+
 struct SkyConfig {
     int cubemap_resolution = 128;
     float sun_elevation_rad = 0.7f;
@@ -91,6 +101,7 @@ struct Config {
     SkyConfig sky;
     ShadingConfig shading;
     FoamConfig foam;
+    SprayConfig spray;
 
     int max_in_flight_frames = 3;
     int target_fps_cap = 0;

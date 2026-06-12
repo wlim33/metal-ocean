@@ -15,7 +15,7 @@ const std::vector<std::string> KNOWN_TOP_KEYS = {
     "cascade_count","spectrum_precision","disp_normal_precision",
     "grid_cols","grid_rows","displacement_range_m",
     "max_in_flight_frames","target_fps_cap",
-    "cascades","wave","sky","shading","foam","bench"
+    "cascades","wave","sky","shading","foam","spray","bench"
 };
 
 void check_unknown_keys(const toml::table& t, LoadResult& r) {
@@ -80,6 +80,16 @@ void load_shading(const toml::table& t, ShadingConfig& s, LoadResult& r) {
     }
 }
 
+void load_spray(const toml::table& t, SprayConfig& s, LoadResult& r) {
+    warn_keys(t, {"gain","bias","lifetime_s","wind_response","size_m","alpha"}, "spray", r);
+    s.gain          = load_clamped(t, "spray", "gain",          s.gain,          0.0f,  8.0f, r);
+    s.bias          = load_clamped(t, "spray", "bias",          s.bias,          0.0f,  1.5f, r);
+    s.lifetime_s    = load_clamped(t, "spray", "lifetime_s",    s.lifetime_s,    0.2f,  5.0f, r);
+    s.wind_response = load_clamped(t, "spray", "wind_response", s.wind_response, 0.0f,  2.0f, r);
+    s.size_m        = load_clamped(t, "spray", "size_m",        s.size_m,        0.05f, 2.0f, r);
+    s.alpha         = load_clamped(t, "spray", "alpha",         s.alpha,         0.0f,  1.0f, r);
+}
+
 void load_foam(const toml::table& t, FoamConfig& f, LoadResult& r) {
     warn_keys(t, {"bias","gain","decay_seconds","dispersal","albedo","detail_scale","stretch","tear"}, "foam", r);
     f.bias          = load_clamped(t, "foam", "bias",          f.bias,          0.0f,  1.5f, r);
@@ -120,6 +130,7 @@ LoadResult load_config_from_string(const std::string& text) {
     if (auto* w = tbl["wave"].as_table()) load_wave(*w, c.wave);
     if (auto* s = tbl["shading"].as_table()) load_shading(*s, c.shading, r);
     if (auto* f = tbl["foam"].as_table())    load_foam(*f, c.foam, r);
+    if (auto* sp = tbl["spray"].as_table())  load_spray(*sp, c.spray, r);
     // sky, cascades, bench loaders still pending; extend as needed.
     return r;
 }
@@ -152,6 +163,12 @@ LoadResult apply_overrides(LoadResult in, const std::vector<std::string>& kv) {
         else if (key == "foam.detail_scale")  in.config.foam.detail_scale  = std::stof(val);
         else if (key == "foam.stretch")       in.config.foam.stretch       = std::stof(val);
         else if (key == "foam.tear")          in.config.foam.tear          = std::stof(val);
+        else if (key == "spray.gain")         in.config.spray.gain         = std::stof(val);
+        else if (key == "spray.bias")         in.config.spray.bias         = std::stof(val);
+        else if (key == "spray.lifetime_s")   in.config.spray.lifetime_s   = std::stof(val);
+        else if (key == "spray.wind_response") in.config.spray.wind_response = std::stof(val);
+        else if (key == "spray.size_m")       in.config.spray.size_m       = std::stof(val);
+        else if (key == "spray.alpha")        in.config.spray.alpha        = std::stof(val);
         else if (key == "shading.sss_view_boost") in.config.shading.sss_view_boost = std::stof(val);
         else if (key == "shading.sss_view_power") in.config.shading.sss_view_power = std::stof(val);
         else if (key == "shading.scatter_strength") in.config.shading.scatter_strength = std::stof(val);
@@ -204,6 +221,13 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.foam.detail_scale,  sizeof(c.foam.detail_scale),  h);
     h = fnv1a64(&c.foam.stretch,       sizeof(c.foam.stretch),       h);
     h = fnv1a64(&c.foam.tear,          sizeof(c.foam.tear),          h);
+    // Spray
+    h = fnv1a64(&c.spray.gain,          sizeof(c.spray.gain),          h);
+    h = fnv1a64(&c.spray.bias,          sizeof(c.spray.bias),          h);
+    h = fnv1a64(&c.spray.lifetime_s,    sizeof(c.spray.lifetime_s),    h);
+    h = fnv1a64(&c.spray.wind_response, sizeof(c.spray.wind_response), h);
+    h = fnv1a64(&c.spray.size_m,        sizeof(c.spray.size_m),        h);
+    h = fnv1a64(&c.spray.alpha,         sizeof(c.spray.alpha),         h);
     // Bench (hash bench_mode + frame counts; skip output_path to avoid string pointer instability)
     h = fnv1a64(&c.bench.bench_mode,      sizeof(c.bench.bench_mode),      h);
     h = fnv1a64(&c.bench.warmup_frames,   sizeof(c.bench.warmup_frames),   h);

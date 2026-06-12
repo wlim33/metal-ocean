@@ -42,3 +42,11 @@ warmup_frames   = 60
 measure_frames  = 600
 camera_path     = "orbit"
 output_path     = "bench-{timestamp}.csv"
+
+[spray]
+gain           = 1.0
+bias           = 0.7
+lifetime_s     = 1.2
+wind_response  = 0.85
+size_m         = 0.5
+alpha          = 0.25

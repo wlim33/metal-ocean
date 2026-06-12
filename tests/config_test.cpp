@@ -140,3 +140,44 @@ TEST(Config, WrongTypedValuesWarnAndKeepDefault) {
     ASSERT_EQ(r.warnings.size(), 1u);
     EXPECT_NE(r.warnings[0].find("wrong type"), std::string::npos);
 }
+
+TEST(Config, SprayTableRoundTrip) {
+    auto r = mo::load_config_from_string(R"(
+[spray]
+gain = 2.0
+bias = 0.6
+lifetime_s = 2.0
+wind_response = 1.1
+size_m = 0.8
+alpha = 0.4
+)");
+    EXPECT_TRUE(r.warnings.empty());
+    EXPECT_FLOAT_EQ(r.config.spray.gain, 2.0f);
+    EXPECT_FLOAT_EQ(r.config.spray.bias, 0.6f);
+    EXPECT_FLOAT_EQ(r.config.spray.lifetime_s, 2.0f);
+    EXPECT_FLOAT_EQ(r.config.spray.wind_response, 1.1f);
+    EXPECT_FLOAT_EQ(r.config.spray.size_m, 0.8f);
+    EXPECT_FLOAT_EQ(r.config.spray.alpha, 0.4f);
+}
+
+TEST(Config, SprayClampsAndOverrides) {
+    auto r = mo::load_config_from_string("[spray]\nlifetime_s = 99.0\n");
+    EXPECT_FLOAT_EQ(r.config.spray.lifetime_s, 5.0f);
+    ASSERT_EQ(r.warnings.size(), 1u);
+    mo::LoadResult base;
+    auto o = mo::apply_overrides(std::move(base), {"spray.gain=0"});
+    EXPECT_FLOAT_EQ(o.config.spray.gain, 0.0f);
+    EXPECT_TRUE(o.warnings.empty());
+}
+
+TEST(Config, HashSensitiveToEverySprayKey) {
+    mo::Config a;
+    uint64_t h0 = mo::config_hash(a);
+    auto flip = [&](auto setter) { mo::Config c; setter(c); EXPECT_NE(mo::config_hash(c), h0); };
+    flip([](mo::Config& c) { c.spray.gain += 1.0f; });
+    flip([](mo::Config& c) { c.spray.bias += 0.1f; });
+    flip([](mo::Config& c) { c.spray.lifetime_s += 1.0f; });
+    flip([](mo::Config& c) { c.spray.wind_response += 0.5f; });
+    flip([](mo::Config& c) { c.spray.size_m += 0.5f; });
+    flip([](mo::Config& c) { c.spray.alpha += 0.2f; });
+}
