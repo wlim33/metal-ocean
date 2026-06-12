@@ -11,6 +11,9 @@ class Simulation {
 public:
     void init(const MetalContext& ctx, PipelineCache& cache, const Config& cfg);
     void rebuild_if_dirty(const MetalContext& ctx, const Config& cfg);
+    // Computes per-frame foam state (decay factor from real dt). Call once
+    // per frame before encode/encode_stage.
+    void begin_frame(float dt_seconds, const Config& cfg);
     void encode(void* compute_encoder, float time, const Config& cfg);
     void encode_mipgen(void* blit_encoder, const Config& cfg);
     // Profiling split: stage 0 = spectrum, 1 = fft, 2 = post, across all cascades.
@@ -27,5 +30,6 @@ private:
     std::vector<std::unique_ptr<Cascade>> cascades_;
     std::vector<Cascade*> ptrs_;
     uint64_t cfg_hash_h0_ = 0;
+    float foam_decay_factor_ = 1.0f;
 };
 }

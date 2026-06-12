@@ -140,6 +140,8 @@ extern double mo_g_drawable_wait_ms;
 
         self2->_sky.bake_cubemap_if_dirty(self2->_ctx, (__bridge void*)cb, self2->_app->config());
         self2->_sim.rebuild_if_dirty(self2->_ctx, self2->_app->config());
+        self2->_sim.begin_frame((float)self2->_app->clock().delta_seconds(),
+                                self2->_app->config());
 
         const int slot = self2->_frame_index % 4;
         mo::CounterSampler* smp = self2->_prof_on ? &self2->_samplers[slot] : nullptr;

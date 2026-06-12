@@ -33,6 +33,13 @@ struct CascadeUniforms {
     float L;
     float t;
     float choppiness;
+    // Foam accumulation (design §3.2). decay is the per-frame multiplier
+    // exp(-dt/tau), computed CPU-side in Simulation::begin_frame.
+    float foam_bias;
+    float foam_gain;
+    float foam_decay;
+    float foam_dispersal;
+    float inv_n;          // 1/cascade_count, for the k-share offset
 };
 
 struct FftPassUniforms {

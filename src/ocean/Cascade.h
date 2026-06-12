@@ -15,6 +15,12 @@ struct CascadeParams {
     float amplitude = 4000.0f;
     float swell = 0.3f;
     uint32_t seed = 0xC0FFEEu;
+    // Foam (filled by Simulation::make_params from Config + begin_frame state)
+    float foam_bias = 0.85f;
+    float foam_gain = 1.5f;
+    float foam_decay_factor = 1.0f;
+    float foam_dispersal = 0.7f;
+    float inv_n = 1.0f / 3.0f;
 };
 
 class Cascade {
@@ -30,6 +36,7 @@ public:
 
     void* displacement_handle() const { return disp_.handle; }
     void* normal_handle()       const { return normal_.handle; }
+    void* foam_handle()         const { return foam_[foam_cur_].handle; }
 
 private:
     CascadeParams params_;
@@ -39,9 +46,14 @@ private:
     // single dispatch: tilde -> ifft_intermediate -> field.
     Texture tilde_{}, ifft_intermediate_{}, field_{};
     Texture disp_{}, normal_{};
+    // Ping-pong persistent foam: (k, k^2, foam, 0). Mipped every frame —
+    // mips of k/k^2 are the D&B moment prefilter, mips of foam are benign.
+    Texture foam_[2]{};
+    int     foam_cur_ = 0;
     Buffer  uniforms_{};
     void* pso_spectrum_ = nullptr;
     void* pso_fft_ = nullptr;
     void* pso_post_ = nullptr;
+    void* pso_foam_ = nullptr;
 };
 }

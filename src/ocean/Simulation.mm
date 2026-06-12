@@ -3,10 +3,11 @@
 #import "core/Hash.h"
 #import "gpu/MetalContext.h"
 #import "gpu/PipelineCache.h"
+#include "foam_common.h"
 
 namespace mo {
 
-static CascadeParams make_params(const Config& cfg, int i) {
+static CascadeParams make_params(const Config& cfg, int i, float foam_decay_factor) {
     CascadeParams p;
     p.N = cfg.cascades[i].resolution;
     p.size_m = cfg.cascades[i].size_m;
@@ -16,6 +17,11 @@ static CascadeParams make_params(const Config& cfg, int i) {
     p.amplitude      = cfg.wave.amplitude;
     p.swell          = cfg.wave.swell;
     p.seed = 0xC0FFEEu ^ (uint32_t)(i * 0x9E3779B9u);
+    p.foam_bias         = cfg.foam.bias;
+    p.foam_gain         = cfg.foam.gain;
+    p.foam_decay_factor = foam_decay_factor;
+    p.foam_dispersal    = cfg.foam.dispersal;
+    p.inv_n             = 1.0f / (float)cfg.cascade_count;
     return p;
 }
 
@@ -39,7 +45,7 @@ void Simulation::init(const MetalContext& ctx, PipelineCache& cache, const Confi
     cascades_.clear();
     for (int i = 0; i < cfg.cascade_count; ++i) {
         auto c = std::make_unique<Cascade>();
-        c->init(ctx, cache, make_params(cfg, i));
+        c->init(ctx, cache, make_params(cfg, i, 1.0f));
         cascades_.push_back(std::move(c));
     }
     cfg_hash_h0_ = h0_config_hash(cfg);
@@ -52,14 +58,18 @@ void Simulation::rebuild_if_dirty(const MetalContext& ctx, const Config& cfg) {
     // Only rebuild h0 for existing cascades; for cascade-count growth/shrink, we'd need
     // to re-init with the PipelineCache (kept simple here — resize-down only).
     for (int i = 0; i < (int)cascades_.size() && i < cfg.cascade_count; ++i) {
-        cascades_[i]->rebuild_h0(ctx, make_params(cfg, i));
+        cascades_[i]->rebuild_h0(ctx, make_params(cfg, i, 1.0f));
     }
     cfg_hash_h0_ = nh;
 }
 
+void Simulation::begin_frame(float dt_seconds, const Config& cfg) {
+    foam_decay_factor_ = foamc_decay_factor(dt_seconds, cfg.foam.decay_seconds);
+}
+
 void Simulation::encode(void* enc, float time, const Config& cfg) {
     for (int i = 0; i < (int)cascades_.size() && i < cfg.cascade_count; ++i) {
-        cascades_[i]->encode(enc, time, make_params(cfg, i));
+        cascades_[i]->encode(enc, time, make_params(cfg, i, foam_decay_factor_));
     }
 }
 
@@ -71,7 +81,7 @@ void Simulation::encode_mipgen(void* blit_encoder, const Config& cfg) {
 
 void Simulation::encode_stage(void* enc, int stage, float time, const Config& cfg) {
     for (int i = 0; i < (int)cascades_.size() && i < cfg.cascade_count; ++i) {
-        auto p = make_params(cfg, i);
+        auto p = make_params(cfg, i, foam_decay_factor_);
         switch (stage) {
             case 0: cascades_[i]->encode_spectrum(enc, time, p); break;
             case 1: cascades_[i]->encode_fft(enc, p); break;
