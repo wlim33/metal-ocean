@@ -130,12 +130,21 @@ void OceanRenderer::bake_foam_detail_if_needed(const MetalContext& ctx, void* co
     id<MTLCommandBuffer> cb = (__bridge id<MTLCommandBuffer>)command_buffer;
     id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
     [ce setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso];
-    [ce setTexture:(__bridge id<MTLTexture>)foam_detail_.handle atIndex:0];
-    [ce dispatchThreads:MTLSizeMake(512, 512, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
+    // Every mip level is baked analytically band-limited (the kernel fades
+    // octaves the level can't represent). Box-filtering aliased mip-0 content
+    // with generateMipmaps produced gridded moiré at the tile period.
+    id<MTLTexture> tex = (__bridge id<MTLTexture>)foam_detail_.handle;
+    for (NSUInteger lvl = 0; lvl < tex.mipmapLevelCount; ++lvl) {
+        id<MTLTexture> view = [tex newTextureViewWithPixelFormat:MTLPixelFormatR8Unorm
+                                                     textureType:MTLTextureType2D
+                                                          levels:NSMakeRange(lvl, 1)
+                                                          slices:NSMakeRange(0, 1)];
+        [ce setTexture:view atIndex:0];
+        NSUInteger sz = tex.width >> lvl; if (sz == 0) sz = 1;
+        NSUInteger tg = sz < 16 ? sz : 16;
+        [ce dispatchThreads:MTLSizeMake(sz, sz, 1) threadsPerThreadgroup:MTLSizeMake(tg, tg, 1)];
+    }
     [ce endEncoding];
-    id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
-    [blit generateMipmapsForTexture:(__bridge id<MTLTexture>)foam_detail_.handle];
-    [blit endEncoding];
     foam_detail_baked_ = true;
 }
 }

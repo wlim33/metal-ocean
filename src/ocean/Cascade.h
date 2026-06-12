@@ -15,12 +15,13 @@ struct CascadeParams {
     float amplitude = 4000.0f;
     float swell = 0.3f;
     uint32_t seed = 0xC0FFEEu;
-    // Foam (filled by Simulation::make_params from Config + begin_frame state)
-    float foam_bias = 0.85f;
-    float foam_gain = 1.5f;
+    // Foam — always overwritten by Simulation::make_params from Config +
+    // begin_frame state; zero-init only (config owns the real defaults).
+    float foam_bias = 0.0f;
+    float foam_gain = 0.0f;
     float foam_decay_factor = 1.0f;
-    float foam_dispersal = 0.7f;
-    float inv_n = 1.0f / 3.0f;
+    float foam_dispersal = 0.0f;
+    float inv_n = 1.0f;
 };
 
 class Cascade {

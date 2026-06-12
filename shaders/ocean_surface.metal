@@ -102,10 +102,18 @@ fragment float4 ocean_fs(
     // texture: aged foam is patchy and genuinely stays with the surface, so
     // a static-on-sheet pattern is correct there and wrong on fresh caps.
     float sigma2 = max(0.0, m2 - mu_sq);
-    float W = foamc_coverage(S.foam_bias, mu, sigma2);
+    // Variance floor: at mip 0 true footprint variance is ~0, so W becomes a
+    // binary step of bilinearly-filtered k — whose iso-contour traces
+    // texel-grid hyperbola segments (square seams on fresh crest caps). The
+    // floor keeps the erf edge ~2 texels wide; far-field coverage, where
+    // genuine variance dominates, is unaffected.
+    float W = foamc_coverage(S.foam_bias, mu, max(sigma2, 4e-3));
     P = saturate(P);
     float d_hi = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale).r;
     float d_lo = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale * 0.25).r;
+    // 0.7/1.3: aged foam (P->0) shows the coarse layer dimmed, fresh foam
+    // (P->1) the fine layer boosted — the crossfade spreads octave contrast
+    // with age (SoT's high->low-frequency trick, design §4.2).
     float detail = mix(d_lo * 0.7, d_hi * 1.3, P);
     // The dispersal blur diffuses a few-percent P tail across the whole
     // surface at steady state, which the detail texture exposes as a pale
