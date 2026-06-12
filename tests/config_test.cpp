@@ -55,6 +55,8 @@ decay_seconds = 6.5
 dispersal = 1.2
 albedo = 0.45
 detail_scale = 0.5
+stretch = 2.2
+tear = 0.8
 )");
     EXPECT_TRUE(r.warnings.empty());
     EXPECT_FLOAT_EQ(r.config.foam.bias, 0.9f);
@@ -63,6 +65,8 @@ detail_scale = 0.5
     EXPECT_FLOAT_EQ(r.config.foam.dispersal, 1.2f);
     EXPECT_FLOAT_EQ(r.config.foam.albedo, 0.45f);
     EXPECT_FLOAT_EQ(r.config.foam.detail_scale, 0.5f);
+    EXPECT_FLOAT_EQ(r.config.foam.stretch, 2.2f);
+    EXPECT_FLOAT_EQ(r.config.foam.tear, 0.8f);
 }
 
 TEST(Config, FoamValuesClampWithWarning) {
@@ -117,6 +121,8 @@ TEST(Config, HashSensitiveToEveryFoamKey) {
     flip([](mo::Config& c) { c.foam.dispersal += 1.0f; });
     flip([](mo::Config& c) { c.foam.albedo = 0.9f; });
     flip([](mo::Config& c) { c.foam.detail_scale = 1.0f; });
+    flip([](mo::Config& c) { c.foam.stretch = 3.0f; });
+    flip([](mo::Config& c) { c.foam.tear = 0.9f; });
     flip([](mo::Config& c) { c.shading.sss_view_boost = 1.5f; });
     flip([](mo::Config& c) { c.shading.sss_view_power = 7.0f; });
     flip([](mo::Config& c) { c.shading.scatter_strength = 1.8f; });

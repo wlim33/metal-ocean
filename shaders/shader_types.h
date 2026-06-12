@@ -71,4 +71,9 @@ struct OceanSurfaceUniforms {
     float displacement_range_m;
     int   debug_view;
     float scatter_strength;
+    // Wind direction (unit), for wind-aligned foam streak stretching.
+    float wind_dir_x;
+    float wind_dir_z;
+    float foam_stretch;
+    float foam_tear;
 };

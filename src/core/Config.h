@@ -52,6 +52,8 @@ struct FoamConfig {
     float dispersal     = 0.7f;   // blur radius, texels; 0 = off
     float albedo        = 0.55f;
     float detail_scale  = 0.35f;
+    float stretch       = 1.6f;   // along-wind streak elongation, 1 = isotropic
+    float tear          = 0.8f;   // 0 = soft multiply edges, 1 = fully torn
 };
 
 struct SkyConfig {

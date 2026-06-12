@@ -109,8 +109,14 @@ fragment float4 ocean_fs(
     // genuine variance dominates, is unaffected.
     float W = foamc_coverage(S.foam_bias, mu, max(sigma2, 4e-3));
     P = saturate(P);
-    float d_hi = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale).r;
-    float d_lo = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale * 0.25).r;
+    // Foam streaks: sample the detail in the wind frame with the along-wind
+    // axis stretched 2.5x — real foam elongates into wind-aligned streaks;
+    // isotropic clumps read as polka dots.
+    float2 wdir = float2(S.wind_dir_x, S.wind_dir_z);
+    float2 uvw  = float2(dot(in.uv_xz, wdir) / max(S.foam_stretch, 1.0),
+                         dot(in.uv_xz, float2(-wdir.y, wdir.x)));
+    float d_hi = foam_detail.sample(smp, uvw * S.foam_detail_scale).r;
+    float d_lo = foam_detail.sample(smp, uvw * S.foam_detail_scale * 0.25).r;
     // 0.7/1.3: aged foam (P->0) shows the coarse layer dimmed, fresh foam
     // (P->1) the fine layer boosted — the crossfade spreads octave contrast
     // with age (SoT's high->low-frequency trick, design §4.2).
@@ -120,7 +126,12 @@ fragment float4 ocean_fs(
     // film. Shape it out: below ~0.12 renders as nothing, full strength by
     // ~0.55. Raw P still drives the age crossfade above.
     float P_shaped = smoothstep(0.12, 0.55, P);
-    float foam_mask = saturate(max(W, P_shaped * detail));
+    // Torn edges: erode P against the detail field instead of multiplying —
+    // patch boundaries follow the detail's filaments (ragged), interiors keep
+    // holes where detail is dark. Fresh W stays solid (dense breaking foam).
+    float torn = smoothstep(0.85 - 0.7 * P_shaped, 1.05 - 0.7 * P_shaped, detail);
+    float mask_P = mix(P_shaped * detail, torn, S.foam_tear);
+    float foam_mask = saturate(max(W, mask_P));
 
     // Foam material (design §4.2): Lambertian layer, kills the mirror term.
     // Sun term is irradiance·(N·L)/π (proper Lambertian); the mip-3 cube

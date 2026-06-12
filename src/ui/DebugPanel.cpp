@@ -45,6 +45,8 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("dispersal",   &c.foam.dispersal,     0.0f, 2.0f);
         ImGui::SliderFloat("albedo",      &c.foam.albedo,        0.0f, 1.0f);
         ImGui::SliderFloat("detail scale",&c.foam.detail_scale,  0.01f, 4.0f);
+        ImGui::SliderFloat("stretch",     &c.foam.stretch,       1.0f, 4.0f);
+        ImGui::SliderFloat("tear",        &c.foam.tear,          0.0f, 1.0f);
     }
     if (ImGui::CollapsingHeader("Debug view")) {
         const char* names[] = {"final","normal","folding","fresnel","reflection",

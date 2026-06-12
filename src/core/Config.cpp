@@ -81,13 +81,15 @@ void load_shading(const toml::table& t, ShadingConfig& s, LoadResult& r) {
 }
 
 void load_foam(const toml::table& t, FoamConfig& f, LoadResult& r) {
-    warn_keys(t, {"bias","gain","decay_seconds","dispersal","albedo","detail_scale"}, "foam", r);
+    warn_keys(t, {"bias","gain","decay_seconds","dispersal","albedo","detail_scale","stretch","tear"}, "foam", r);
     f.bias          = load_clamped(t, "foam", "bias",          f.bias,          0.0f,  1.5f, r);
     f.gain          = load_clamped(t, "foam", "gain",          f.gain,          0.0f,  8.0f, r);
     f.decay_seconds = load_clamped(t, "foam", "decay_seconds", f.decay_seconds, 0.1f, 30.0f, r);
     f.dispersal     = load_clamped(t, "foam", "dispersal",     f.dispersal,     0.0f,  2.0f, r);
     f.albedo        = load_clamped(t, "foam", "albedo",        f.albedo,        0.0f,  1.0f, r);
     f.detail_scale  = load_clamped(t, "foam", "detail_scale",  f.detail_scale,  0.01f, 4.0f, r);
+    f.stretch       = load_clamped(t, "foam", "stretch",       f.stretch,       1.0f,  4.0f, r);
+    f.tear          = load_clamped(t, "foam", "tear",          f.tear,          0.0f,  1.0f, r);
 }
 
 } // namespace
@@ -148,6 +150,8 @@ LoadResult apply_overrides(LoadResult in, const std::vector<std::string>& kv) {
         else if (key == "foam.dispersal")     in.config.foam.dispersal     = std::stof(val);
         else if (key == "foam.albedo")        in.config.foam.albedo        = std::stof(val);
         else if (key == "foam.detail_scale")  in.config.foam.detail_scale  = std::stof(val);
+        else if (key == "foam.stretch")       in.config.foam.stretch       = std::stof(val);
+        else if (key == "foam.tear")          in.config.foam.tear          = std::stof(val);
         else if (key == "shading.sss_view_boost") in.config.shading.sss_view_boost = std::stof(val);
         else if (key == "shading.sss_view_power") in.config.shading.sss_view_power = std::stof(val);
         else if (key == "shading.scatter_strength") in.config.shading.scatter_strength = std::stof(val);
@@ -198,6 +202,8 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.foam.dispersal,     sizeof(c.foam.dispersal),     h);
     h = fnv1a64(&c.foam.albedo,        sizeof(c.foam.albedo),        h);
     h = fnv1a64(&c.foam.detail_scale,  sizeof(c.foam.detail_scale),  h);
+    h = fnv1a64(&c.foam.stretch,       sizeof(c.foam.stretch),       h);
+    h = fnv1a64(&c.foam.tear,          sizeof(c.foam.tear),          h);
     // Bench (hash bench_mode + frame counts; skip output_path to avoid string pointer instability)
     h = fnv1a64(&c.bench.bench_mode,      sizeof(c.bench.bench_mode),      h);
     h = fnv1a64(&c.bench.warmup_frames,   sizeof(c.bench.warmup_frames),   h);

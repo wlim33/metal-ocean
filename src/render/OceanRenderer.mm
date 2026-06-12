@@ -91,6 +91,10 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
     su.sss_view_boost    = cfg.shading.sss_view_boost;
     su.sss_view_power    = cfg.shading.sss_view_power;
     su.scatter_strength  = cfg.shading.scatter_strength;
+    su.wind_dir_x = std::cos(cfg.wave.wind_dir_rad);
+    su.wind_dir_z = std::sin(cfg.wave.wind_dir_rad);
+    su.foam_stretch = cfg.foam.stretch;
+    su.foam_tear    = cfg.foam.tear;
     su.foam_bias         = cfg.foam.bias;
     su.foam_albedo       = cfg.foam.albedo;
     su.foam_detail_scale = cfg.foam.detail_scale;

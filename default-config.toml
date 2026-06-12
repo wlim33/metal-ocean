@@ -33,6 +33,8 @@ decay_seconds  = 3.0
 dispersal      = 0.7
 albedo         = 0.55
 detail_scale   = 0.35
+stretch        = 1.6
+tear           = 0.8
 
 [bench]
 bench_mode      = false
