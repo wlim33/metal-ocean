@@ -3,10 +3,13 @@
 #include "spray_common.h"
 using namespace metal;
 
-// Keep byte-identical with spray_emit.metal / spray_billboard.metal.
-struct SprayParticle { float3 pos; float age; float3 vel; float inv_life; };
+// Particle/counter layouts are duplicated across the spray_*.metal files
+// (MSL-only structs, never cross to C++) — keep byte-identical. packed_float3
+// is load-bearing: native float3 is 16-byte aligned, which would double the
+// struct stride past the 32-byte buffer allocation in SprayRenderer.mm.
+struct SprayParticle { packed_float3 pos; float age; packed_float3 vel; float inv_life; };
 struct SprayCounters { atomic_uint ring_head; atomic_uint alive; };
-struct SprayInstance { float3 pos; float size; float2 stretch; float alpha; float _pad; };
+struct SprayInstance { packed_float3 pos; float size; float2 stretch; float alpha; float _pad; };
 
 kernel void spray_update_kernel(
     device SprayParticle*  particles [[buffer(0)]],
