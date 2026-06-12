@@ -1,10 +1,13 @@
 #include <metal_stdlib>
 using namespace metal;
 
-// One-time bake (design §5): tileable foam micro-structure. Cell-wall Worley
-// (F2-F1 webbing = bubble lace) at three octaves, broken up by wrapped value
-// noise. All lattices wrap at their cell count, so the texture tiles
-// seamlessly. Output mean is ~0.55 so the mask erosion keeps coverage.
+// One-time bake (design §5): tileable foam micro-structure. Inverted-F1
+// Worley CLUMPS (bright blobs at cell features) at three octaves, broken up
+// by wrapped value noise. Clump topology is load-bearing: F2-F1 cell-wall
+// ridges form a connected Voronoi-edge net that reads as spiderwebs draped
+// on the water — disconnected blobs read as foam. All lattices wrap at their
+// cell count, so the texture tiles seamlessly. Output mean ~0.55 so the
+// mask erosion keeps coverage.
 
 static float2 cell_hash(int2 p, int period) {
     p = ((p % period) + period) % period;            // wrapped lattice
@@ -14,19 +17,20 @@ static float2 cell_hash(int2 p, int period) {
     return float2(h & 0xFFFFu, (h >> 16) & 0xFFFFu) / 65535.0;
 }
 
-static float worley_web(float2 uv, int cells) {
+static float worley_blob(float2 uv, int cells) {
     float2 g = uv * (float)cells;
     int2 base = int2(floor(g));
-    float f1 = 1e9, f2 = 1e9;
+    float f1 = 1e9;
     for (int dy = -1; dy <= 1; ++dy)
         for (int dx = -1; dx <= 1; ++dx) {
             int2 cell = base + int2(dx, dy);
             float2 feat = float2(cell) + cell_hash(cell, cells);
-            float d = distance(g, feat);
-            if (d < f1) { f2 = f1; f1 = d; }
-            else if (d < f2) { f2 = d; }
+            f1 = min(f1, distance(g, feat));
         }
-    return 1.0 - saturate((f2 - f1) * 2.2);           // bright cell walls
+    // Inverted F1: bright at the feature, dark toward the cell border. The
+    // 1.1 falloff + 0.08 lift hold the octave mean near the old recipe's so
+    // the §4.1 erosion strength doesn't silently change with the topology.
+    return saturate(1.08 - saturate(f1 * 1.1));
 }
 
 static float value_noise(float2 uv, int cells) {
@@ -49,10 +53,10 @@ kernel void foam_detail_kernel(
     if (gid.x >= S || gid.y >= S) return;
     float2 uv = float2(gid) / (float)S;
 
-    float web = 0.55 * worley_web(uv, 8)
-              + 0.30 * worley_web(uv, 19)
-              + 0.15 * worley_web(uv, 41);
+    float clump = 0.55 * worley_blob(uv, 8)
+                + 0.30 * worley_blob(uv, 19)
+                + 0.15 * worley_blob(uv, 41);
     float vn = value_noise(uv, 7);
-    float r = saturate(web * (0.55 + 0.9 * vn));
+    float r = saturate(clump * (0.55 + 0.9 * vn));
     out.write(float4(r, r, r, 1.0), gid);
 }
