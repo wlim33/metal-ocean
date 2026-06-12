@@ -76,6 +76,7 @@ kernel void spray_finalize_kernel(
 {
     if (gid != 0) return;
     args->indexCount = 6;
+    // alive <= SPRAY_POOL by construction (update appends <= 1/thread): no clamp needed.
     args->instanceCount = atomic_load_explicit(&counters->alive, memory_order_relaxed);
     args->indexStart = 0; args->baseVertex = 0; args->baseInstance = 0;
 }

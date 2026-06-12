@@ -15,7 +15,7 @@ public:
                         const Config& cfg, const OrbitCamera& cam,
                         Cascade* const* cascades, int cascade_count);
     // After the ocean draw, before ImGui. Tests depth, writes none.
-    void encode_draw(void* render_encoder, const OrbitCamera& cam, const Config& cfg);
+    void encode_draw(void* render_encoder, int frame_index, const OrbitCamera& cam, const Config& cfg);
     // Zeroes the per-frame alive counter (4 bytes at offset 4).
     // The ring head at offset 0 persists across frames by design.
     void encode_counter_reset(void* blit_encoder);

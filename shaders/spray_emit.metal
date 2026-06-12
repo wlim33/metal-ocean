@@ -55,6 +55,7 @@ kernel void spray_emit_kernel(
     float3 vel = float3(U.wind_vel.x, 0.0, U.wind_vel.z) * (0.7 + 0.4 * s1)
                + float3(lateral.x, 0.3 + 0.6 * s3, lateral.y);
 
+    // Overwrite-oldest is intentional: a living-slot guard would deadlock a full pool.
     uint cursor = atomic_fetch_add_explicit(&counters->ring_head, 1u, memory_order_relaxed);
     uint slot   = sprayc_ring_slot(cursor, SPRAY_POOL);
     device SprayParticle& pt = particles[slot];

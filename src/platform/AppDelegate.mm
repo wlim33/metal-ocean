@@ -167,7 +167,7 @@ extern double mo_g_drawable_wait_ms;
             self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),
                 self2->_app->config(), self2->_sim.data(), self2->_sim.count(),
                 self2->_sky, self2->_frame_index, self2->_app->debug_view);
-            self2->_spray.encode_draw((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
+            self2->_spray.encode_draw((__bridge void*)enc, self2->_frame_index, self2->_app->camera(), self2->_app->config());
         };
         auto encode_mips = [&]() {
             id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
@@ -258,7 +258,7 @@ extern double mo_g_drawable_wait_ms;
                 self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),
                     self2->_app->config(), self2->_sim.data(), self2->_sim.count(),
                     self2->_sky, self2->_frame_index, self2->_app->debug_view);
-                self2->_spray.encode_draw((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
+                self2->_spray.encode_draw((__bridge void*)enc, self2->_frame_index, self2->_app->camera(), self2->_app->config());
             });
             if (!noui) {
                 MTLRenderPassDescriptor* rp3 = (MTLRenderPassDescriptor*)[rp copy];

@@ -47,7 +47,12 @@ void SprayRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
     pso_emit_     = cache.compute_pso(ctx, "spray_emit_kernel");
     pso_update_   = cache.compute_pso(ctx, "spray_update_kernel");
     pso_finalize_ = cache.compute_pso(ctx, "spray_finalize_kernel");
-    // pso_draw_: Task 7 (spray_billboard.metal doesn't exist yet)
+    RenderPSODesc dd;
+    dd.vertex_fn = "spray_vs";
+    dd.fragment_fn = "spray_fs";
+    dd.depth_pixel_format = (unsigned)MTLPixelFormatDepth32Float;
+    dd.blending = true;
+    pso_draw_ = cache.render_pso(ctx, dd);
 
     // Depth-stencil state: test LessEqual, depth write OFF.
     MTLDepthStencilDescriptor* dsd = [MTLDepthStencilDescriptor new];
@@ -127,9 +132,29 @@ void SprayRenderer::encode_compute(void* compute_encoder, int frame_index, float
    threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
 }
 
-void SprayRenderer::encode_draw(void* render_encoder, const OrbitCamera& cam, const Config& cfg) {
+void SprayRenderer::encode_draw(void* render_encoder, int frame_index, const OrbitCamera& cam, const Config& cfg) {
     if (cfg.spray.gain <= 0.0f) return;
-    if (!pso_draw_) return; // Task 7
+    id<MTLRenderCommandEncoder> enc = (__bridge id<MTLRenderCommandEncoder>)render_encoder;
+
+    int slot = frame_index % RING;
+    CameraUniforms cu;
+    auto v = cam.view(); auto p = cam.proj(); auto vp = p * v;
+    std::memcpy(&cu.view, &v[0][0], 64);
+    std::memcpy(&cu.proj, &p[0][0], 64);
+    std::memcpy(&cu.view_proj, &vp[0][0], 64);
+    cu.position = (simd_float3){cam.position().x, cam.position().y, cam.position().z};
+    std::memcpy(cam_buf_[slot].cpu_ptr, &cu, sizeof(cu));
+
+    [enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)pso_draw_];
+    [enc setDepthStencilState:(__bridge id<MTLDepthStencilState>)depth_state_];
+    [enc setVertexBuffer:(__bridge id<MTLBuffer>)instances_.handle offset:0 atIndex:0];
+    [enc setVertexBuffer:(__bridge id<MTLBuffer>)cam_buf_[slot].handle offset:0 atIndex:1];
+    [enc drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                     indexType:MTLIndexTypeUInt16
+                   indexBuffer:(__bridge id<MTLBuffer>)quad_ibo_.handle
+             indexBufferOffset:0
+                indirectBuffer:(__bridge id<MTLBuffer>)indirect_.handle
+          indirectBufferOffset:0];
 }
 
 void SprayRenderer::encode_counter_reset(void* blit_encoder) {
