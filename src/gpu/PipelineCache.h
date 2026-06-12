@@ -8,6 +8,7 @@ struct RenderPSODesc {
     std::string vertex_fn;
     std::string fragment_fn;
     unsigned    color_pixel_format = 81; // MTLPixelFormatBGRA8Unorm_sRGB (= 81)
+    unsigned    depth_pixel_format = 0;  // MTLPixelFormatInvalid: no depth declared
     bool        blending = false;
 };
 

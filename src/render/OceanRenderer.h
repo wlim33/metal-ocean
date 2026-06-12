@@ -28,6 +28,7 @@ private:
     size_t index_count_[RING]{};
     uint32_t index_key_[RING]{};
     void*  pso_ = nullptr;
+    void*  depth_state_ = nullptr;
     Texture foam_detail_{};
     bool foam_detail_baked_ = false;
 };

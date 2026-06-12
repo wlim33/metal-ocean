@@ -21,6 +21,7 @@ void OceanRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
     desc.vertexFunction   = [lib newFunctionWithName:@"ocean_vs"];
     desc.fragmentFunction = [lib newFunctionWithName:@"ocean_fs"];
     desc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    desc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
     MTLVertexDescriptor* vd = [MTLVertexDescriptor new];
     vd.attributes[0].format = MTLVertexFormatFloat2;
     vd.attributes[0].offset = 0; vd.attributes[0].bufferIndex = 0;
@@ -31,6 +32,11 @@ void OceanRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
     id<MTLRenderPipelineState> pso = [dev newRenderPipelineStateWithDescriptor:desc error:&err];
     if (!pso) { fprintf(stderr, "ocean pso: %s\n", err.localizedDescription.UTF8String); std::exit(1); }
     pso_ = (__bridge_retained void*)pso;
+
+    MTLDepthStencilDescriptor* dsd = [MTLDepthStencilDescriptor new];
+    dsd.depthCompareFunction = MTLCompareFunctionLessEqual;
+    dsd.depthWriteEnabled = YES;
+    depth_state_ = (__bridge_retained void*)[dev newDepthStencilStateWithDescriptor:dsd];
 
     for (int i = 0; i < RING; ++i) {
         cam_buf_[i]  = make_buffer(ctx, sizeof(CameraUniforms), true);
@@ -103,6 +109,7 @@ void OceanRenderer::encode(void* encoder, const OrbitCamera& cam, const Config& 
     std::memcpy(surf_buf_[slot].cpu_ptr, &su, sizeof(su));
 
     [enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)pso_];
+    [enc setDepthStencilState:(__bridge id<MTLDepthStencilState>)depth_state_];
     [enc setVertexBuffer:(__bridge id<MTLBuffer>)vbo_[slot].handle offset:0 atIndex:0];
     [enc setVertexBuffer:(__bridge id<MTLBuffer>)cam_buf_[slot].handle  offset:0 atIndex:1];
     [enc setVertexBuffer:(__bridge id<MTLBuffer>)surf_buf_[slot].handle offset:0 atIndex:2];

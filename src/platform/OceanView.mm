@@ -17,6 +17,11 @@ double mo_g_drawable_wait_ms = 0.0;
         self.delegate = self;
         self.enableSetNeedsDisplay = NO;
         self.paused = NO;
+        // Memoryless depth: lives in tile memory only (zero bandwidth).
+        // Ocean writes it, spume tests it; cleared each pass, never stored.
+        self.depthStencilPixelFormat = MTLPixelFormatDepth32Float;
+        self.depthStencilStorageMode = MTLStorageModeMemoryless;
+        self.clearDepth = 1.0;
     }
     return self;
 }

@@ -13,7 +13,10 @@ static void die(const char* msg, NSError* err) {
 }
 
 void* PipelineCache::render_pso(const MetalContext& ctx, const RenderPSODesc& d) {
-    std::string key = d.vertex_fn + "|" + d.fragment_fn;
+    std::string key = d.vertex_fn + "|" + d.fragment_fn
+                    + "|c" + std::to_string(d.color_pixel_format)
+                    + "|d" + std::to_string(d.depth_pixel_format)
+                    + "|b" + (d.blending ? "1" : "0");
     auto it = render_cache_.find(key);
     if (it != render_cache_.end()) return it->second;
 
@@ -34,6 +37,8 @@ void* PipelineCache::render_pso(const MetalContext& ctx, const RenderPSODesc& d)
         desc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
         desc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
     }
+    if (d.depth_pixel_format != 0)
+        desc.depthAttachmentPixelFormat = (MTLPixelFormat)d.depth_pixel_format;
 
     NSError* err = nil;
     id<MTLRenderPipelineState> pso = [dev newRenderPipelineStateWithDescriptor:desc error:&err];
