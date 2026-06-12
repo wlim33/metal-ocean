@@ -30,6 +30,10 @@ target_include_directories(metal-ocean-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 target_sources(metal-ocean-tests PRIVATE fft_parity_test.cpp)
 target_include_directories(metal-ocean-tests PRIVATE ${CMAKE_SOURCE_DIR}/shaders)
 
+# Foam math parity: executes the formulas shared with shaders/foam_update.metal
+# and shaders/ocean_surface.metal.
+target_sources(metal-ocean-tests PRIVATE foam_test.cpp)
+
 target_sources(metal-ocean-tests PRIVATE
     spectrum_test.cpp
     ${CMAKE_SOURCE_DIR}/src/ocean/Spectrum.cpp
