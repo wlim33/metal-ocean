@@ -16,7 +16,7 @@ public:
     void begin_frame(float dt_seconds, const Config& cfg);
     void encode(void* compute_encoder, float time, const Config& cfg);
     void encode_mipgen(void* blit_encoder, const Config& cfg);
-    // Profiling split: stage 0 = spectrum, 1 = fft, 2 = post+foam, across all cascades.
+    // Profiling split: stage 0 = spectrum, 1 = fft, 2 = post+foam (+spray sim, encoded by AppDelegate), across all cascades.
     void encode_stage(void* compute_encoder, int stage, float time, const Config& cfg);
 
     int          count() const { return (int)cascades_.size(); }

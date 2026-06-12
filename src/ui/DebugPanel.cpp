@@ -48,6 +48,14 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("stretch",     &c.foam.stretch,       1.0f, 4.0f);
         ImGui::SliderFloat("tear",        &c.foam.tear,          0.0f, 1.0f);
     }
+    if (ImGui::CollapsingHeader("Spray", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat("gain##spray",     &c.spray.gain,          0.0f, 8.0f);
+        ImGui::SliderFloat("bias##spray",     &c.spray.bias,          0.0f, 1.5f);
+        ImGui::SliderFloat("lifetime s",      &c.spray.lifetime_s,    0.2f, 5.0f);
+        ImGui::SliderFloat("wind response",   &c.spray.wind_response, 0.0f, 2.0f);
+        ImGui::SliderFloat("size m",          &c.spray.size_m,        0.05f, 2.0f);
+        ImGui::SliderFloat("alpha##spray",    &c.spray.alpha,         0.0f, 1.0f);
+    }
     if (ImGui::CollapsingHeader("Debug view")) {
         const char* names[] = {"final","normal","folding","fresnel","reflection",
                                "refraction","sss","foam W","foam P","foam mask","foam detail"};
