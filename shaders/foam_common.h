@@ -4,9 +4,8 @@
 // Metal-free, so the formulas live here where a plain C++ translation unit
 // can execute the exact arithmetic the GPU runs.
 //
-// References (see docs/superpowers/specs/2026-06-12-sea-foam-whitecaps-design.md):
-//   Dupuy & Bruneton 2012, "Real-time Animation and Rendering of Ocean
-//   Whitecaps" — k-share decomposition (eq. 7) and erf coverage (eq. 6).
+// Reference: Dupuy & Bruneton 2012, "Real-time Animation and Rendering of
+// Ocean Whitecaps" — k-share decomposition (eq. 7) and erf coverage (eq. 6).
 
 // -- stdlib dispatch shims: internal, not part of the foam API --
 #ifdef __METAL_VERSION__
