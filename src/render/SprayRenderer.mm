@@ -43,7 +43,7 @@ void SprayRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
     [cb commit];
     [cb waitUntilCompleted];
 
-    // Compute PSOs for the three stub kernels.
+    // Compute PSOs for the three spray kernels.
     pso_emit_     = cache.compute_pso(ctx, "spray_emit_kernel");
     pso_update_   = cache.compute_pso(ctx, "spray_update_kernel");
     pso_finalize_ = cache.compute_pso(ctx, "spray_finalize_kernel");
@@ -83,6 +83,9 @@ void SprayRenderer::encode_compute(void* compute_encoder, int frame_index, float
     u.size_m       = cfg.spray.size_m;
     u.alpha        = cfg.spray.alpha;
     u.turbulence   = cfg.spray.turbulence;
+    static_assert(sizeof(SprayUniforms) == 128,
+                  "spray kernels mirror this layout; a size change means the "
+                  "MSL side must be re-checked field by field");
     u.annulus_inner = 5.0f;
     u.annulus_outer = 150.0f;
     u.frame_index   = frame_index;

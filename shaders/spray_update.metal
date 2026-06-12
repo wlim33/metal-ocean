@@ -46,6 +46,8 @@ kernel void spray_update_kernel(
     float  ph2 = 6.2831853 * sprayc_hash01(gid, 23u);
     float  fr1 = 6.2831853 * (0.4 + 0.8 * sprayc_hash01(gid, 22u));   // 0.4-1.2 Hz
     float  fr2 = fr1 * (1.618 + 0.6 * sprayc_hash01(gid, 24u));       // golden-ish ratio
+    // Amplitudes: 0.55 keeps the second sine subordinate (beat, not chord);
+    // 0.28*wlen keeps peak weave ~0.4x wind speed at full turbulence.
     float  osc = (sin(pt.age * fr1 + ph1) + 0.55 * sin(pt.age * fr2 + ph2))
                * tb * 0.28 * wlen;
     float  target_x = U.wind_vel.x * wind_f + wperp.x * osc;
@@ -77,8 +79,8 @@ kernel void spray_update_kernel(
 
     float t = pt.age * pt.inv_life;
     if (t >= 1.0) return;
-    float fade_in  = sprayc_saturate(t * 10.0);
-    float fade_out = sprayc_saturate((1.0 - t) * 2.5);
+    float fade_in  = sprayc_saturate(t * 10.0);         // ramp in over first 10% of life
+    float fade_out = sprayc_saturate((1.0 - t) * 2.5);   // fade out over the last 40%
     uint idx = atomic_fetch_add_explicit(&counters->alive, 1u, memory_order_relaxed);
     if (idx >= SPRAY_POOL) return;
     device SprayInstance& inst = instances[idx];

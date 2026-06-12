@@ -28,7 +28,7 @@ private:
     void* pso_emit_ = nullptr;
     void* pso_update_ = nullptr;
     void* pso_finalize_ = nullptr;
-    void* pso_draw_ = nullptr;     // looked up in Task 7 (shaders don't exist yet)
+    void* pso_draw_ = nullptr;     // billboard draw PSO
     void* depth_state_ = nullptr;  // test LessEqual, write OFF
 };
 }
