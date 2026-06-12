@@ -31,18 +31,21 @@ kernel void spectrum_kernel(
     float2 h  = a + b;
 
     // Packed Tessendorf horizontal displacement:
-    //   D̂x + i·D̂z = -i·ĥ·(kx + i·kz)/|k|
+    //   D̂x + i·D̂z = +i·ĥ·(kx + i·kz)/|k|
+    // The +i (not the paper's −i) is required by THIS chain's conventions
+    // (h0·e^{+iωt} evolution, +2π synthesis FFT): it makes displacement
+    // converge at crests so λ > 0 sharpens crests and J dips at crests.
     // One complex IFFT then yields Dx in the real part and Dz in the imaginary
     // part (both fields are real because their spectra are Hermitian). Zeroed
-    // at DC and at the unpaired Nyquist bins (gid == 0 row/col) where -i·k̂·ĥ
+    // at DC and at the unpaired Nyquist bins (gid == 0 row/col) where i·k̂·ĥ
     // would break that symmetry — mirrors displacement_spectrum_from_height,
     // which is validated against the CPU FFT reference in spectrum_test.cpp.
     float kmag = length(k);
     float2 dxdz = float2(0, 0);
     if (kmag > 1e-6 && gid.x != 0 && gid.y != 0) {
-        float2 mih = float2(h.y, -h.x);  // -i·ĥ
+        float2 pih = float2(-h.y, h.x);  // +i·ĥ
         float2 q   = k / kmag;
-        dxdz = float2(mih.x * q.x - mih.y * q.y, mih.x * q.y + mih.y * q.x);
+        dxdz = float2(pih.x * q.x - pih.y * q.y, pih.x * q.y + pih.y * q.x);
     }
     // h-tilde in .xy, Dx+i*Dz in .zw: one fft_kernel chain transforms both.
     tilde.write(float4(h, dxdz), gid);

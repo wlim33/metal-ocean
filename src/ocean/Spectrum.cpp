@@ -38,10 +38,15 @@ void displacement_spectrum_from_height(
             float kz = two_pi * (float)jc / L;
             float kmag = std::sqrt(kx * kx + kz * kz);
             glm::vec2 hk = h[(size_t)j * N + i];
-            // -i · (a + i·b) = b - i·a
-            glm::vec2 minus_i_h{ hk.y, -hk.x };
-            dx[(size_t)j * N + i] = (kx / kmag) * minus_i_h;
-            dz[(size_t)j * N + i] = (kz / kmag) * minus_i_h;
+            // +i · (a + i·b) = -b + i·a. The sign is chain-specific: with
+            // h̃(k,t) = h0·e^{+iωt} pairing and the +2π synthesis FFT, +i·k̂·ĥ
+            // makes the horizontal displacement CONVERGE at crests (λ > 0 ⇒
+            // sharp crests, J dips at crests). Tessendorf's −i belongs to the
+            // opposite phase convention; with this chain it pinched troughs
+            // ("creases look like valleys"). Pinned by ChopConvergesAtCrest.
+            glm::vec2 plus_i_h{ -hk.y, hk.x };
+            dx[(size_t)j * N + i] = (kx / kmag) * plus_i_h;
+            dz[(size_t)j * N + i] = (kz / kmag) * plus_i_h;
         }
     }
 }

@@ -99,9 +99,9 @@ TEST(Spectrum, DisplacementSpectrumAppliesTessendorfFormula) {
         float kx = 2.0f * static_cast<float>(M_PI) * ic / L;
         float kz = 2.0f * static_cast<float>(M_PI) * jc / L;
         float kmag = std::sqrt(kx*kx + kz*kz);
-        glm::vec2 minus_i_h{hk.y, -hk.x}; // -i * (a + ib) = b - ia
-        glm::vec2 expected_dx = (kx / kmag) * minus_i_h;
-        glm::vec2 expected_dz = (kz / kmag) * minus_i_h;
+        glm::vec2 plus_i_h{-hk.y, hk.x}; // +i * (a + ib) = -b + ia
+        glm::vec2 expected_dx = (kx / kmag) * plus_i_h;
+        glm::vec2 expected_dz = (kz / kmag) * plus_i_h;
         EXPECT_NEAR(dx[gy * N + gx].x, expected_dx.x, 1e-5f);
         EXPECT_NEAR(dx[gy * N + gx].y, expected_dx.y, 1e-5f);
         EXPECT_NEAR(dz[gy * N + gx].x, expected_dz.x, 1e-5f);
@@ -174,4 +174,51 @@ TEST(Spectrum, PackedDxDzIfftUnpacksToBothRealFields) {
         EXPECT_NEAR(packed[m].real(), dx_std[m].real(), 1e-6);
         EXPECT_NEAR(packed[m].imag(), dz_std[m].real(), 1e-6);
     }
+}
+
+// Physical pin — this is the test that would have caught the inverted-chop
+// bug ("creases look like valleys"). Whatever signs the spectrum, evolution,
+// and FFT conventions use, they must COMPOSE so that the horizontal
+// displacement converges at wave crests: dDx/dx < 0 at the height maximum
+// (and > 0 at the minimum). Then positive choppiness pinches crests sharp
+// and the folding Jacobian J = 1 + λ·dDx/dx dips at crests, where foam
+// belongs. Convention-independent, unlike the formula test above.
+TEST(Spectrum, ChopConvergesAtCrest) {
+    using mo::fft_ref::c64;
+    int N = 64;
+    float L = 64.0f;
+
+    // Single +x traveling mode (kz = 0) plus its Hermitian partner — the
+    // t = 0 state of spectrum.metal's evolution (e^{iωt} = 1, h0 real).
+    std::vector<glm::vec2> h(N * N, glm::vec2(0.0f));
+    h[(size_t)(N/2) * N + (N/2 + 3)] = {1.0f, 0.0f};
+    h[(size_t)(N/2) * N + (N/2 - 3)] = {1.0f, 0.0f};
+
+    std::vector<glm::vec2> dx, dz;
+    mo::displacement_spectrum_from_height(h, N, L, dx, dz);
+
+    auto to_std = [&](const std::vector<glm::vec2>& v) {
+        std::vector<c64> out(N * N);
+        for (int j = 0; j < N; ++j)
+            for (int i = 0; i < N; ++i)
+                out[((j + N/2) % N) * N + ((i + N/2) % N)] =
+                    c64(v[(size_t)j * N + i].x, v[(size_t)j * N + i].y);
+        return out;
+    };
+    auto h_std  = to_std(h);
+    auto dx_std = to_std(dx);
+    mo::fft_ref::fft_2d(h_std,  N, true);
+    mo::fft_ref::fft_2d(dx_std, N, true);
+
+    // Scan row 0: locate crest and trough of the (real) height field.
+    int imax = 0, imin = 0;
+    for (int i = 1; i < N; ++i) {
+        if (h_std[i].real() > h_std[imax].real()) imax = i;
+        if (h_std[i].real() < h_std[imin].real()) imin = i;
+    }
+    auto ddx_at = [&](int i) {
+        return 0.5 * (dx_std[(i + 1) % N].real() - dx_std[(i - 1 + N) % N].real());
+    };
+    EXPECT_LT(ddx_at(imax), 0.0) << "Dx must converge at the crest";
+    EXPECT_GT(ddx_at(imin), 0.0) << "Dx must diverge at the trough";
 }
