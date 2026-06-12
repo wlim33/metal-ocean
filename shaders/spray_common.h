@@ -28,7 +28,8 @@ inline void sprayc_relax(SPRAYC_REF v, float target, float drag, float dt) {
 
 // One (downwind, vertical) integration step (design §5): horizontal relaxes
 // toward the wind, vertical has weaker drag plus weak gravity — spume
-// floats and drifts, it doesn't arc like ballistic droplets.
+// floats and drifts, it doesn't arc like ballistic droplets. The 0.3 vertical-drag factor
+// lets gravity win slowly (design §5: g_eff ~2.5 with drag 2.0 reaches ~-3.5 m/s terminal-ish over 4 s) — tune via the spec, not ad hoc.
 inline void sprayc_integrate(SPRAYC_REF vx, SPRAYC_REF vy,
                              float wind_v, float drag, float g_eff, float dt) {
     sprayc_relax(vx, wind_v, drag, dt);
@@ -56,3 +57,6 @@ inline float sprayc_hash01(unsigned a, unsigned b) {
     h ^= (h >> 16);
     return (float)(h & 0x00FFFFFFu) / 16777216.0f;
 }
+
+// Scoped to this header; signatures above are fully instantiated.
+#undef SPRAYC_REF

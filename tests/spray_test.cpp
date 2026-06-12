@@ -55,9 +55,13 @@ TEST(SprayMath, RingSlotWraps) {
     EXPECT_EQ(sprayc_ring_slot(65535u, pool), 65535u);
     EXPECT_EQ(sprayc_ring_slot(65536u, pool), 0u);
     EXPECT_EQ(sprayc_ring_slot(65536u * 3u + 7u, pool), 7u);
-    unsigned base = 4294963000u;             // near uint32 wrap
-    for (unsigned i = 1; i < 4096u; ++i)
-        EXPECT_NE(sprayc_ring_slot(base, pool), sprayc_ring_slot(base + i, pool));
+    // The cursor genuinely crosses uint32 in long sessions (~5 h at 60 fps).
+    // Because the pool is a power of two, 2^32 % pool == 0: ring continuity
+    // holds straight through the overflow. Pin it.
+    unsigned base = 4294967295u;             // UINT32_MAX
+    EXPECT_EQ(sprayc_ring_slot(base, pool), 65535u);
+    EXPECT_EQ(sprayc_ring_slot(base + 1u, pool), 0u);   // wraps to 0, no gap
+    EXPECT_EQ(sprayc_ring_slot(base + 2u, pool), 1u);
 }
 
 // ---- hash --------------------------------------------------------------------
@@ -71,5 +75,5 @@ TEST(SprayMath, HashDeterministicAndRoughlyUniform) {
         EXPECT_GE(h, 0.0f); EXPECT_LT(h, 1.0f);
         sum += h;
     }
-    EXPECT_NEAR(sum / 10000.0, 0.5, 0.02);
+    EXPECT_NEAR(sum / 10000.0, 0.5, 0.01);
 }
