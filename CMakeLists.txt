@@ -88,6 +88,7 @@ foreach(METAL_SRC ${METAL_SOURCES})
         DEPENDS ${METAL_SRC} ${CMAKE_SOURCE_DIR}/shaders/shader_types.h
                 ${CMAKE_SOURCE_DIR}/shaders/fft_common.h
                 ${CMAKE_SOURCE_DIR}/shaders/foam_common.h
+                ${CMAKE_SOURCE_DIR}/shaders/spray_common.h
         VERBATIM)
     list(APPEND AIR_FILES ${AIR_OUT})
 endforeach()

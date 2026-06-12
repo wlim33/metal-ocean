@@ -40,6 +40,9 @@ target_include_directories(metal-ocean-tests PRIVATE ${CMAKE_SOURCE_DIR}/shaders
 # and shaders/ocean_surface.metal.
 target_sources(metal-ocean-tests PRIVATE foam_test.cpp)
 
+# Spray math parity: executes the formulas shared with shaders/spray_*.metal.
+target_sources(metal-ocean-tests PRIVATE spray_test.cpp)
+
 target_sources(metal-ocean-tests PRIVATE
     spectrum_test.cpp
     ${CMAKE_SOURCE_DIR}/src/ocean/Spectrum.cpp
