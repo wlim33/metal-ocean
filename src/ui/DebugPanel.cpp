@@ -23,6 +23,7 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("wind dir",   &c.wave.wind_dir_rad,  0.0f, 6.283f);
         ImGui::SliderFloat("choppiness", &c.wave.choppiness,    0.0f, 2.0f);
         ImGui::SliderFloat("swell",      &c.wave.swell,         0.0f, 1.0f);
+        ImGui::SliderFloat("amplitude",  &c.wave.amplitude,     0.1f, 10000.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
     }
     if (ImGui::CollapsingHeader("Sky")) {
         ImGui::SliderFloat("sun elev", &c.sky.sun_elevation_rad, 0.0f, 1.57f);
@@ -30,7 +31,7 @@ void draw_debug_panel(App& app) {
         ImGui::SliderFloat("turbidity",&c.sky.turbidity,        1.0f, 10.0f);
     }
     if (ImGui::CollapsingHeader("Shading")) {
-        ImGui::SliderFloat("foam thresh",&c.shading.foam_threshold, 0.0f, 2.0f);
+        ImGui::SliderFloat("foam thresh",&c.shading.foam_threshold, 0.0f, 1.0f);
         ImGui::SliderFloat("foam str",   &c.shading.foam_strength,  0.0f, 4.0f);
         ImGui::SliderFloat("sss str",    &c.shading.sss_strength,   0.0f, 4.0f);
         ImGui::SliderFloat("fog density",&c.shading.depth_fog_density, 0.0f, 0.5f);

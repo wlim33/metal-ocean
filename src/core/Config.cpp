@@ -31,6 +31,7 @@ void load_wave(const toml::table& t, WaveConfig& w) {
     if (auto v = t["wind_dir_rad"].value<double>())   w.wind_dir_rad   = (float)*v;
     if (auto v = t["choppiness"].value<double>())     w.choppiness     = (float)*v;
     if (auto v = t["swell"].value<double>())          w.swell          = (float)*v;
+    if (auto v = t["amplitude"].value<double>())      w.amplitude      = (float)*v;
 }
 
 } // namespace
@@ -76,6 +77,9 @@ LoadResult apply_overrides(LoadResult in, const std::vector<std::string>& kv) {
         std::string key = s.substr(0, eq);
         std::string val = s.substr(eq + 1);
         if (key == "wave.wind_speed_mps")        in.config.wave.wind_speed_mps = std::stof(val);
+        else if (key == "wave.amplitude")        in.config.wave.amplitude      = std::stof(val);
+        else if (key == "wave.choppiness")       in.config.wave.choppiness     = std::stof(val);
+        else if (key == "wave.swell")            in.config.wave.swell          = std::stof(val);
         else if (key == "cascade_count")         in.config.cascade_count = std::stoi(val);
         else if (key == "grid_cols")             in.config.grid_cols = std::stoi(val);
         else if (key == "grid_rows")             in.config.grid_rows = std::stoi(val);
@@ -92,6 +96,7 @@ uint64_t config_hash(const Config& c) {
     h = fnv1a64(&c.wave.wind_dir_rad,   sizeof(c.wave.wind_dir_rad),   h);
     h = fnv1a64(&c.wave.choppiness,     sizeof(c.wave.choppiness),     h);
     h = fnv1a64(&c.wave.swell,          sizeof(c.wave.swell),          h);
+    h = fnv1a64(&c.wave.amplitude,      sizeof(c.wave.amplitude),      h);
     // Grid / cascades
     h = fnv1a64(&c.cascade_count,       sizeof(c.cascade_count),       h);
     h = fnv1a64(&c.grid_cols,           sizeof(c.grid_cols),           h);

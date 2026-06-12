@@ -44,6 +44,9 @@ void Cascade::init(const MetalContext& ctx, PipelineCache& cache, const CascadeP
     htilde_            = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
     ifft_intermediate_ = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
     height_            = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
+    dxdz_tilde_        = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
+    dxdz_intermediate_ = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
+    dxdz_field_        = make_texture_2d(ctx, N, N, TexFormat::RG32F, true, false);
     disp_              = make_texture_2d(ctx, N, N, TexFormat::RGBA16F, true, false);
     normal_            = make_texture_2d(ctx, N, N, TexFormat::RGBA16F, true, false);
 
@@ -60,6 +63,8 @@ void Cascade::rebuild_h0(const MetalContext& ctx, const CascadeParams& p) {
     SpectrumParams sp;
     sp.N = p.N; sp.L = p.size_m;
     sp.wind_speed = p.wind_speed_mps; sp.wind_dir_rad = p.wind_dir_rad;
+    sp.amplitude = p.amplitude;
+    sp.swell = p.swell;
     sp.seed = p.seed;
     auto data = generate_h0(sp);
     upload_h0(ctx, h0_, data, p.N);
@@ -79,35 +84,39 @@ void Cascade::encode(void* compute_encoder, float time, const CascadeParams& p) 
         [enc dispatchThreads:grid threadsPerThreadgroup:tg];
     };
 
-    // Spectrum
+    // Spectrum: produces htilde (h) and packed dxdz_tilde (D̂x + i·D̂z) from h0.
     [enc setBuffer:(__bridge id<MTLBuffer>)uniforms_.handle offset:0 atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)h0_.handle    atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)htilde_.handle atIndex:1];
+    [enc setTexture:(__bridge id<MTLTexture>)h0_.handle         atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)htilde_.handle     atIndex:1];
+    [enc setTexture:(__bridge id<MTLTexture>)dxdz_tilde_.handle atIndex:2];
     dispatch_n2(pso_spectrum_);
 
-    // FFT horizontal: htilde -> ifft_intermediate
-    FftPassUniforms fu{ N, 0 };
+    // 2D IFFT for h and for the packed Dx+iDz: row pass then column pass.
     [enc setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso_fft_];
-    [enc setBytes:&fu length:sizeof(fu) atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)htilde_.handle atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)ifft_intermediate_.handle atIndex:1];
     [enc setThreadgroupMemoryLength:N * sizeof(float) * 2 atIndex:0];
-    [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(N, 1, 1)];
 
-    // FFT vertical: ifft_intermediate -> height
-    fu.direction = 1;
-    [enc setBytes:&fu length:sizeof(fu) atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)ifft_intermediate_.handle atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)height_.handle atIndex:1];
-    [enc setThreadgroupMemoryLength:N * sizeof(float) * 2 atIndex:0];
-    [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(N, 1, 1)];
+    auto fft_pair = [&](void* in_h, void* mid_h, void* out_h) {
+        FftPassUniforms fu_h{ N, 0 };
+        [enc setBytes:&fu_h length:sizeof(fu_h) atIndex:0];
+        [enc setTexture:(__bridge id<MTLTexture>)in_h  atIndex:0];
+        [enc setTexture:(__bridge id<MTLTexture>)mid_h atIndex:1];
+        [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(N, 1, 1)];
+        FftPassUniforms fu_v{ N, 1 };
+        [enc setBytes:&fu_v length:sizeof(fu_v) atIndex:0];
+        [enc setTexture:(__bridge id<MTLTexture>)mid_h atIndex:0];
+        [enc setTexture:(__bridge id<MTLTexture>)out_h atIndex:1];
+        [enc dispatchThreads:MTLSizeMake(N, N, 1) threadsPerThreadgroup:MTLSizeMake(1, N, 1)];
+    };
+    fft_pair(htilde_.handle,     ifft_intermediate_.handle, height_.handle);
+    fft_pair(dxdz_tilde_.handle, dxdz_intermediate_.handle, dxdz_field_.handle);
 
-    // Post-FFT: height -> disp + normal
+    // Post-FFT: height + packed Dx/Dz -> disp + normal
     [enc setComputePipelineState:(__bridge id<MTLComputePipelineState>)pso_post_];
     [enc setBuffer:(__bridge id<MTLBuffer>)uniforms_.handle offset:0 atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)height_.handle atIndex:0];
-    [enc setTexture:(__bridge id<MTLTexture>)disp_.handle   atIndex:1];
-    [enc setTexture:(__bridge id<MTLTexture>)normal_.handle atIndex:2];
+    [enc setTexture:(__bridge id<MTLTexture>)height_.handle     atIndex:0];
+    [enc setTexture:(__bridge id<MTLTexture>)dxdz_field_.handle atIndex:1];
+    [enc setTexture:(__bridge id<MTLTexture>)disp_.handle       atIndex:2];
+    [enc setTexture:(__bridge id<MTLTexture>)normal_.handle     atIndex:3];
     dispatch_n2(pso_post_);
 }
 

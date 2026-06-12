@@ -9,9 +9,11 @@ struct PipelineCache;
 struct CascadeParams {
     int   N = 256;
     float size_m = 250.0f;
-    float choppiness = 1.2f;
+    float choppiness = 0.8f;
     float wind_speed_mps = 12.0f;
     float wind_dir_rad = 0.5f;
+    float amplitude = 4000.0f;
+    float swell = 0.3f;
     uint32_t seed = 0xC0FFEEu;
 };
 
@@ -27,6 +29,8 @@ public:
 private:
     CascadeParams params_;
     Texture h0_{}, htilde_{}, ifft_intermediate_{}, height_{};
+    // Packed horizontal displacement: D̂x + i·D̂z, one complex IFFT for both.
+    Texture dxdz_tilde_{}, dxdz_intermediate_{}, dxdz_field_{};
     Texture disp_{}, normal_{};
     Buffer  uniforms_{};
     void* pso_spectrum_ = nullptr;

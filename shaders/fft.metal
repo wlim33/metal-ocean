@@ -1,19 +1,12 @@
 #include <metal_stdlib>
 #include "shader_types.h"
+#include "fft_common.h"
 using namespace metal;
 
-static uint bit_reverse(uint x, uint bits) {
-    uint y = 0;
-    for (uint i = 0; i < bits; ++i) { y = (y << 1) | (x & 1u); x >>= 1u; }
-    return y;
-}
-
-static uint log2u(uint n) {
-    uint r = 0; while ((1u << r) < n) ++r; return r;
-}
-
-// One thread per row (direction=0) or column (direction=1). N must be a power of two.
-// In-place FFT on threadgroup memory.
+// One threadgroup per row (direction=0) or column (direction=1). N must be a
+// power of two. In-place unnormalized inverse FFT on threadgroup memory; the
+// butterfly schedule lives in fft_common.h so the CPU parity test runs the
+// exact same arithmetic (see tests/fft_parity_test.cpp).
 kernel void fft_kernel(
     texture2d<float, access::read>  in_tex  [[texture(0)]],
     texture2d<float, access::write> out_tex [[texture(1)]],
@@ -23,34 +16,26 @@ kernel void fft_kernel(
     uint2 tid                              [[thread_position_in_threadgroup]]
 ) {
     uint N = (uint)U.N;
-    uint bits = log2u(N);
-    // Choose row/col index
-    uint line = (U.direction == 0) ? gid.y : gid.x;
-    if (line >= N) return;
-
-    // Load line into threadgroup memory (bit-reversed)
-    uint local = tid.x;
-    if (local >= N) return;
+    uint bits = fftc_log2(N);
+    // Direction=0: each threadgroup is one row (threadgroup size N×1, threads vary in x).
+    // Direction=1: each threadgroup is one column (threadgroup size 1×N, threads vary in y).
+    uint line  = (U.direction == 0) ? gid.y : gid.x;
+    uint local = (U.direction == 0) ? tid.x : tid.y;
+    if (line >= N || local >= N) return;
     uint2 src = (U.direction == 0) ? uint2(local, line) : uint2(line, local);
     float2 v = in_tex.read(src).xy;
-    tg[bit_reverse(local, bits)] = v;
+    tg[fftc_bit_reverse(local, bits)] = v;
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
     for (uint s = 1; s <= bits; ++s) {
-        uint m = 1u << s;
-        uint half_m = m >> 1u;
-        uint k = local & (half_m - 1u);
-        uint group_start = (local / m) * m;
-        uint idx_a = group_start + k;
-        uint idx_b = idx_a + half_m;
-        if (local < N / 2 && idx_b < N) {
-            float angle = -6.283185 * (float)k / (float)m;
-            float2 w = float2(cos(angle), sin(angle));
-            float2 a = tg[idx_a];
-            float2 b = tg[idx_b];
+        if (local < N / 2) {
+            FftcButterfly bf = fftc_schedule(local, s);
+            float2 w = float2(cos(bf.angle), sin(bf.angle));
+            float2 a = tg[bf.a];
+            float2 b = tg[bf.b];
             float2 t = float2(w.x * b.x - w.y * b.y, w.x * b.y + w.y * b.x);
-            tg[idx_a] = a + t;
-            tg[idx_b] = a - t;
+            tg[bf.a] = a + t;
+            tg[bf.b] = a - t;
         }
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }

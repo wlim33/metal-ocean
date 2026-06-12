@@ -20,12 +20,14 @@ struct CascadeConfig {
 struct WaveConfig {
     float wind_speed_mps = 12.0f;
     float wind_dir_rad   = 0.5f;
-    float choppiness     = 1.2f;
+    float choppiness     = 0.8f;
     float swell          = 0.3f;
+    // Phillips spectrum amplitude. Wave height scales with sqrt(amplitude).
+    float amplitude      = 4000.0f;
 };
 
 struct ShadingConfig {
-    float foam_threshold = 0.4f;
+    float foam_threshold = 0.15f;
     float foam_strength  = 1.0f;
     float sss_strength   = 0.5f;
     glm::vec3 sss_color  {0.1f, 0.55f, 0.45f};
@@ -55,11 +57,13 @@ struct BenchConfig {
 
 struct Config {
     int cascade_count = 3;
+    // Patch sizes use coprime/irrational-ish ratios so the cascades don't
+    // reinforce on a regular grid (which produces visible tile seams).
     std::array<CascadeConfig, 4> cascades {
-        CascadeConfig{250.0f, 256, 1.0f},
-        CascadeConfig{ 50.0f, 256, 1.0f},
-        CascadeConfig{ 10.0f, 256, 1.0f},
-        CascadeConfig{  2.0f, 256, 1.0f}};
+        CascadeConfig{271.0f, 256, 1.0f},
+        CascadeConfig{ 73.0f, 256, 1.0f},
+        CascadeConfig{ 17.0f, 256, 1.0f},
+        CascadeConfig{  3.7f, 256, 1.0f}};
     Precision spectrum_precision = Precision::Fp32;
     Precision disp_normal_precision = Precision::Fp16;
 
