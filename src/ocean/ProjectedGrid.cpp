@@ -2,7 +2,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_inverse.hpp>
 #include <algorithm>
-#include <limits>
 
 namespace mo {
 namespace {
@@ -33,6 +32,16 @@ const int FRUSTUM_EDGES[12][2] = {
     {4,5},{4,6},{5,7},{6,7},  // far
     {0,4},{1,5},{2,6},{3,7}   // sides
 };
+
+// Camera ray through NDC (xn, yn): origin at the z=0 unprojection, pointing
+// toward the z=1 unprojection.
+struct Ray { glm::vec3 origin, dir; };
+Ray ndc_ray(const glm::mat4& inv_vp, float xn, float yn) {
+    glm::vec4 a = inv_vp * glm::vec4(xn, yn, 0.0f, 1.0f);
+    glm::vec4 b = inv_vp * glm::vec4(xn, yn, 1.0f, 1.0f);
+    glm::vec3 pa = glm::vec3(a) / a.w;
+    return { pa, glm::vec3(b) / b.w - pa };
+}
 
 } // namespace
 
@@ -66,29 +75,71 @@ ProjectedGridOutput build_projected_grid(const glm::mat4& view, const glm::mat4&
     }
     if (pts.empty()) { out.visible = false; return out; }
 
-    // Displacement camera: same as main unless inside slab; then lift above.
+    // Displacement camera: same as main unless inside slab; then lift above,
+    // keeping the main camera's orientation (rebuild the translation column
+    // from the rotation so the projector really sits at disp_pos).
     glm::vec3 disp_pos = camera_pos;
     glm::mat4 view_disp = view;
     if (camera_pos.y >= SL - D && camera_pos.y <= SL + D) {
         disp_pos.y = SL + D + 1.0f;
-        view_disp = view; view_disp[3] = view * glm::vec4(-disp_pos, 1.0f);
-        // Simpler: rebuild view from disp_pos preserving original forward.
-        // For tests, the lift is what matters; precise orientation reuse is fine.
+        view_disp[3] = glm::vec4(glm::mat3(view) * -disp_pos, 1.0f);
     }
     glm::mat4 inv_disp = glm::inverse(proj * view_disp);
 
-    // Project pts into disp camera NDC; take AABB.
+    // AABB over points projected into disp-camera NDC, clamped per source.
     float xn_min = 1e9f, xn_max = -1e9f, yn_min = 1e9f, yn_max = -1e9f;
     glm::mat4 vp_disp = proj * view_disp;
-    for (auto& w : pts) {
+    auto fold = [&](const glm::vec3& w, float lim) {
         glm::vec4 c = vp_disp * glm::vec4(w, 1.0f);
-        if (c.w <= 0.0f) continue;
+        if (c.w <= 0.0f) return;
         glm::vec2 nd(c.x / c.w, c.y / c.w);
-        nd.x = std::clamp(nd.x, -1.0f, 1.0f);
-        nd.y = std::clamp(nd.y, -1.0f, 1.0f);
+        nd.x = std::clamp(nd.x, -lim, lim);
+        nd.y = std::clamp(nd.y, -lim, lim);
         xn_min = std::min(xn_min, nd.x); xn_max = std::max(xn_max, nd.x);
         yn_min = std::min(yn_min, nd.y); yn_max = std::max(yn_max, nd.y);
+    };
+
+    // Each point is inflated to the corners of its +-D cube so the grid also
+    // reaches rest positions whose displaced surface enters the frustum;
+    // otherwise boundary vertices sit exactly on window-edge rays and any
+    // displacement opens background slivers along the window borders. The
+    // clamp bounds the grid stretch when near-camera points project far
+    // outside the screen; displacements needing more than PAD_NDC_MAX of
+    // screen-space margin can still open gaps, which only happens with the
+    // camera essentially inside the waves.
+    constexpr float PAD_NDC_MAX = 0.75f;
+    for (auto& w : pts)
+        for (int c = 0; c < 8; ++c)
+            fold(w + glm::vec3((c & 1) ? D : -D, (c & 2) ? D : -D, (c & 4) ? D : -D),
+                 1.0f + PAD_NDC_MAX);
+
+    // Rest-pose coverage requirement: wherever the main camera's window
+    // border sees the sea plane, the grid must reach — the +-D inflation
+    // above is only a best-effort margin once the camera sits inside the
+    // slab (the lifted projector needs steeper angles than PAD_NDC_MAX
+    // allows to reach water near the main camera). Sample border rays,
+    // intersect with y=SL, and fold their projections into the AABB.
+    constexpr float REQ_LIM = 4.0f; // bounds grid stretch in degenerate poses
+    for (int k = 0; k <= 8; ++k) {
+        float s = -1.0f + 0.25f * (float)k;
+        for (auto [xn, yn] : {std::pair{s, -1.0f}, {s, 1.0f}, {-1.0f, s}, {1.0f, s}}) {
+            Ray r = ndc_ray(inv_main, xn, yn);
+            if (std::abs(r.dir.y) < 1e-6f) continue;
+            float t = (SL - r.origin.y) / r.dir.y;
+            if (t >= 0.0f) fold(r.origin + r.dir * t, REQ_LIM);
+        }
     }
+
+    // Rays at or above the displacement camera's horizon never hit the sea
+    // plane in front of it (the plane intersection below walks backward),
+    // so cap the AABB top at the horizon line (no camera roll in this app).
+    glm::vec3 fwd = -glm::transpose(glm::mat3(view_disp))[2];
+    glm::vec3 fwd_h(fwd.x, 0.0f, fwd.z);
+    if (glm::dot(fwd_h, fwd_h) > 1e-8f) {
+        glm::vec4 h = vp_disp * glm::vec4(disp_pos + glm::normalize(fwd_h) * 1e6f, 1.0f);
+        if (h.w > 0.0f) yn_max = std::min(yn_max, h.y / h.w - 1e-4f);
+    }
+
     if (xn_min >= xn_max || yn_min >= yn_max) { out.visible = false; return out; }
 
     // Generate vertex grid in this NDC quad, unproject to world, intersect with y=SL.
@@ -100,13 +151,9 @@ ProjectedGridOutput build_projected_grid(const glm::mat4& view, const glm::mat4&
             float xn = xn_min + (xn_max - xn_min) * u;
             float yn = yn_min + (yn_max - yn_min) * v;
 
-            glm::vec4 a = inv_disp * glm::vec4(xn, yn, 0.0f, 1.0f);
-            glm::vec4 b = inv_disp * glm::vec4(xn, yn, 1.0f, 1.0f);
-            glm::vec3 pa = glm::vec3(a) / a.w;
-            glm::vec3 pb = glm::vec3(b) / b.w;
-            glm::vec3 d = pb - pa;
-            float t = (std::abs(d.y) > 1e-6f) ? (SL - pa.y) / d.y : 0.0f;
-            glm::vec3 wp = pa + d * t;
+            Ray r = ndc_ray(inv_disp, xn, yn);
+            float t = (std::abs(r.dir.y) > 1e-6f) ? (SL - r.origin.y) / r.dir.y : 0.0f;
+            glm::vec3 wp = r.origin + r.dir * t;
             out.vertices_xz[(size_t)j * p.cols + i] = { wp.x, wp.z };
         }
     }
