@@ -74,9 +74,13 @@ TEST(FoamMath, CoverageFallsBackToStepAtZeroVariance) {
     EXPECT_FLOAT_EQ(foamc_coverage(0.8f, 1.0f, 0.0f), 0.0f);  // mu > eps: calm
     // Strict less-than convention: mu == eps lands calm-side at zero variance.
     EXPECT_FLOAT_EQ(foamc_coverage(0.8f, 0.8f, 0.0f), 0.0f);
-    // Continuity: tiny variance should approach the step values.
+    // Sub-threshold variance (fp16 noise floor, < 2e-3) takes the step branch
+    // exactly; just-above-threshold erf must agree with the step to ~1e-3
+    // because the erf argument is huge at these (eps − mu) distances.
     EXPECT_NEAR(foamc_coverage(0.8f, 0.5f, 1e-5f), 1.0f, 1e-3f);
     EXPECT_NEAR(foamc_coverage(0.8f, 1.0f, 1e-5f), 0.0f, 1e-3f);
+    EXPECT_NEAR(foamc_coverage(0.8f, 0.5f, 2.1e-3f), 1.0f, 1e-3f);
+    EXPECT_NEAR(foamc_coverage(0.8f, 1.0f, 2.1e-3f), 0.0f, 1e-3f);
 }
 
 // ---- decay -----------------------------------------------------------------

@@ -97,8 +97,11 @@ fragment float4 ocean_fs(
     float foam_mask = saturate(max(W, P) * detail);
 
     // Foam material (design §4.2): Lambertian layer, kills the mirror term.
+    // Sun term is irradiance·(N·L)/π (proper Lambertian); the mip-3 cube
+    // sample is a radiance-average ambient proxy left un-normalized on
+    // purpose — its weight is absorbed into foam_albedo at tuning time.
     float3 ambient_sky = sky_cube.sample(cube_smp_mip, n, level(3.0)).rgb;
-    float3 foam_lit = S.foam_albedo * (ambient_sky + S.sun_color * max(dot(n, sun), 0.0) * 0.3183);
+    float3 foam_lit = S.foam_albedo * (ambient_sky + S.sun_color * max(dot(n, sun), 0.0) * (1.0 / M_PI_F));
     F *= (1.0 - foam_mask);
 
     float3 surface = mix(refraction, reflection, F) + sss;

@@ -50,7 +50,11 @@ inline float foamc_erf(float x) {
 // (D&B eq. 6): W = 1/2 + 1/2·erf((eps − mu)/(σ√2)). Falls back to a step
 // when the footprint variance vanishes (mip 0, calm seas).
 inline float foamc_coverage(float eps, float mu, float sigma2) {
-    if (sigma2 < 1e-6f) return mu < eps ? 1.0f : 0.0f;
+    // Threshold sits above the fp16 quantization noise floor of the stored
+    // moments (k quantum ~1e-3 near k=1, so k² residuals reach ~1e-5..1e-3):
+    // genuine footprint variance under minification is larger; anything
+    // smaller is sensor noise and must take the clean step, not a noisy erf.
+    if (sigma2 < 2e-3f) return mu < eps ? 1.0f : 0.0f;
     return 0.5f + 0.5f * foamc_erf((eps - mu) * foamc_rsqrt(2.0f * sigma2));
 }
 
