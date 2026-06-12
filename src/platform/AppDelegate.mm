@@ -156,8 +156,9 @@ extern double mo_g_drawable_wait_ms;
         auto te0 = std::chrono::steady_clock::now();
 
         auto draw_scene = [&](id<MTLRenderCommandEncoder> enc) {
-            // Painter's order: sky first, ocean over it. There is no depth
-            // attachment, and within one pass the TBDR only shades the last
+            // Painter's order: sky first, ocean over it. The memoryless depth
+            // attachment exists for transparent layers (spume tests it); among the
+            // opaque layers the TBDR still only shades the last
             // opaque write per pixel, so the covered sky costs nothing.
             self2->_sky.encode_full_screen((__bridge void*)enc, self2->_app->camera(), self2->_app->config());
             self2->_ocean.encode((__bridge void*)enc, self2->_app->camera(),

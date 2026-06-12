@@ -37,6 +37,7 @@ void OceanRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
     dsd.depthCompareFunction = MTLCompareFunctionLessEqual;
     dsd.depthWriteEnabled = YES;
     depth_state_ = (__bridge_retained void*)[dev newDepthStencilStateWithDescriptor:dsd];
+    if (!depth_state_) { fprintf(stderr, "ocean depth-stencil state creation failed\n"); std::exit(1); }
 
     for (int i = 0; i < RING; ++i) {
         cam_buf_[i]  = make_buffer(ctx, sizeof(CameraUniforms), true);

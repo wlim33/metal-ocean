@@ -15,7 +15,7 @@ namespace mo {
 
 void SkyRenderer::init(const MetalContext& ctx, PipelineCache& cache) {
     RenderPSODesc d; d.vertex_fn = "sky_vs"; d.fragment_fn = "sky_fs";
-    d.depth_pixel_format = 252; // MTLPixelFormatDepth32Float (= 252)
+    d.depth_pixel_format = (unsigned)MTLPixelFormatDepth32Float;
     pso_ = cache.render_pso(ctx, d);
 
     RenderPSODesc d2; d2.vertex_fn = "sky_cube_vs"; d2.fragment_fn = "sky_cube_fs";
