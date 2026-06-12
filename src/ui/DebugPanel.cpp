@@ -33,10 +33,21 @@ void draw_debug_panel(App& app) {
     }
     if (ImGui::CollapsingHeader("Shading")) {
         ImGui::SliderFloat("sss str",    &c.shading.sss_strength,   0.0f, 4.0f);
+        ImGui::SliderFloat("sss view boost", &c.shading.sss_view_boost, 0.0f, 2.0f);
+        ImGui::SliderFloat("sss view power", &c.shading.sss_view_power, 1.0f, 8.0f);
         ImGui::SliderFloat("fog density",&c.shading.depth_fog_density, 0.0f, 0.5f);
     }
+    if (ImGui::CollapsingHeader("Foam", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat("bias",        &c.foam.bias,          0.0f, 1.5f);
+        ImGui::SliderFloat("gain",        &c.foam.gain,          0.0f, 8.0f);
+        ImGui::SliderFloat("decay s",     &c.foam.decay_seconds, 0.1f, 30.0f);
+        ImGui::SliderFloat("dispersal",   &c.foam.dispersal,     0.0f, 2.0f);
+        ImGui::SliderFloat("albedo",      &c.foam.albedo,        0.0f, 1.0f);
+        ImGui::SliderFloat("detail scale",&c.foam.detail_scale,  0.01f, 4.0f);
+    }
     if (ImGui::CollapsingHeader("Debug view")) {
-        const char* names[] = {"final","normal","folding","fresnel","reflection","refraction","sss"};
+        const char* names[] = {"final","normal","folding","fresnel","reflection",
+                               "refraction","sss","foam W","foam P","foam mask","foam detail"};
         ImGui::Combo("view", &app.debug_view, names, IM_ARRAYSIZE(names));
     }
     ImGui::End();
