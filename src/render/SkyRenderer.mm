@@ -41,7 +41,7 @@ void SkyRenderer::encode_full_screen(void* encoder, const OrbitCamera& cam, cons
 void SkyRenderer::create_cubemap(const MetalContext& ctx, int size) {
     if (cubemap_.handle && (int)cubemap_.width == size) return;
     destroy_texture(cubemap_);
-    cubemap_ = make_texture_cube(ctx, (uint32_t)size, TexFormat::RGBA16F);
+    cubemap_ = make_texture_cube(ctx, (uint32_t)size, TexFormat::RGBA16F, true);
 }
 
 void SkyRenderer::bake_cubemap_if_dirty(const MetalContext& ctx, void* command_buffer, const Config& cfg) {
@@ -83,6 +83,13 @@ void SkyRenderer::bake_cubemap_if_dirty(const MetalContext& ctx, void* command_b
         [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [enc endEncoding];
     }
+
+    // Mip chain feeds the foam ambient term (level ~3 of a 128 cube is a
+    // cheap directional irradiance proxy). Bake-time only.
+    id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
+    [blit generateMipmapsForTexture:(__bridge id<MTLTexture>)cubemap_.handle];
+    [blit endEncoding];
+
     last_config_hash_ = h;
 }
 

@@ -14,6 +14,6 @@ struct Texture {
 Texture make_texture_2d(const MetalContext& ctx, uint32_t w, uint32_t h, TexFormat f,
                         bool storage_write = true, bool render_target = false,
                         bool mipmapped = false);
-Texture make_texture_cube(const MetalContext& ctx, uint32_t size, TexFormat f);
+Texture make_texture_cube(const MetalContext& ctx, uint32_t size, TexFormat f, bool mipmapped = false);
 void    destroy_texture(Texture& t);
 }

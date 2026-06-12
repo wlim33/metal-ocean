@@ -31,10 +31,11 @@ Texture make_texture_2d(const MetalContext& ctx, uint32_t w, uint32_t h, TexForm
     return { (__bridge_retained void*)t, w, h, f };
 }
 
-Texture make_texture_cube(const MetalContext& ctx, uint32_t s, TexFormat f) {
+Texture make_texture_cube(const MetalContext& ctx, uint32_t s, TexFormat f, bool mipmapped) {
     id<MTLDevice> dev = (__bridge id<MTLDevice>)ctx.device;
     MTLTextureDescriptor* d = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:pf(f)
-                                                                                    size:s mipmapped:NO];
+                                                                                    size:s
+                                                                               mipmapped:(mipmapped ? YES : NO)];
     d.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
     d.storageMode = MTLStorageModePrivate;
     id<MTLTexture> t = [dev newTextureWithDescriptor:d];
