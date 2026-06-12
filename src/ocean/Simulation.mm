@@ -4,6 +4,7 @@
 #import "gpu/MetalContext.h"
 #import "gpu/PipelineCache.h"
 #include "foam_common.h"
+#include <cmath>
 
 namespace mo {
 
@@ -18,7 +19,12 @@ static CascadeParams make_params(const Config& cfg, int i, float foam_decay_fact
     p.swell          = cfg.wave.swell;
     p.seed = 0xC0FFEEu ^ (uint32_t)(i * 0x9E3779B9u);
     p.foam_bias         = cfg.foam.bias;
-    p.foam_gain         = cfg.foam.gain;
+    // Deposits fall off per cascade: small cascades fold constantly at ripple
+    // scale, uncorrelated with the crests the eye tracks — equal-weight
+    // deposits read as random churn. 0.6^i keeps persistent foam sourced
+    // from the waves that are visually breaking. (Candidate config knob if
+    // tuning wants to vary it; fixed pending visual calibration.)
+    p.foam_gain         = cfg.foam.gain * std::pow(0.6f, (float)i);
     p.foam_decay_factor = foam_decay_factor;
     p.foam_dispersal    = cfg.foam.dispersal;
     p.inv_n             = 1.0f / (float)cfg.cascade_count;

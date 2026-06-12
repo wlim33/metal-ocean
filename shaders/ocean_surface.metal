@@ -85,16 +85,19 @@ fragment float4 ocean_fs(
     float view_through = S.sss_view_boost * pow(max(dot(-V, sun), 0.0), S.sss_view_power);
     float3 sss = S.sss_strength * h_norm * (back_light + view_through) * S.sss_color;
 
-    // Whitecap coverage (design §4.1): instantaneous anti-aliased W from
-    // mip-filtered k moments, max'd with the persistent buffer P, eroded by
-    // the two-scale detail texture (applied once, here only).
+    // Whitecap coverage (design §4.1, revised after visual calibration):
+    // W (instantaneous, combined-J, anti-aliased) renders UN-eroded — actively
+    // breaking foam is solid white and rides the crest with the wave phase.
+    // Only the persistent layer P is eroded by the material-pinned detail
+    // texture: aged foam is patchy and genuinely stays with the surface, so
+    // a static-on-sheet pattern is correct there and wrong on fresh caps.
     float sigma2 = max(0.0, m2 - mu_sq);
     float W = foamc_coverage(S.foam_bias, mu, sigma2);
     P = saturate(P);
     float d_hi = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale).r;
     float d_lo = foam_detail.sample(smp, in.uv_xz * S.foam_detail_scale * 0.25).r;
     float detail = mix(d_lo * 0.7, d_hi * 1.3, P);
-    float foam_mask = saturate(max(W, P) * detail);
+    float foam_mask = saturate(max(W, P * detail));
 
     // Foam material (design §4.2): Lambertian layer, kills the mirror term.
     // Sun term is irradiance·(N·L)/π (proper Lambertian); the mip-3 cube
