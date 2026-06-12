@@ -8,6 +8,7 @@
 //   Dupuy & Bruneton 2012, "Real-time Animation and Rendering of Ocean
 //   Whitecaps" — k-share decomposition (eq. 7) and erf coverage (eq. 6).
 
+// -- stdlib dispatch shims: internal, not part of the foam API --
 #ifdef __METAL_VERSION__
 inline float foamc_exp(float x)   { return metal::exp(x); }
 inline float foamc_abs(float x)   { return metal::fabs(x); }
@@ -53,8 +54,9 @@ inline float foamc_coverage(float eps, float mu, float sigma2) {
     return 0.5f + 0.5f * foamc_erf((eps - mu) * foamc_rsqrt(2.0f * sigma2));
 }
 
-// Per-frame exponential decay multiplier, dt clamped so a debugger pause or
-// hitch cannot flush the persistent foam buffer.
+// Per-frame exponential decay multiplier. dt is clamped to [0, 0.1 s] so a
+// debugger pause or hitch cannot flush the persistent foam buffer; tau is
+// floored at 1 ms to guard against zero/invalid config values.
 inline float foamc_decay_factor(float dt_seconds, float tau_seconds) {
     float dt  = dt_seconds < 0.0f ? 0.0f : (dt_seconds > 0.1f ? 0.1f : dt_seconds);
     float tau = tau_seconds < 1e-3f ? 1e-3f : tau_seconds;

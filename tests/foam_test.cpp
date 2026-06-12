@@ -24,8 +24,8 @@ TEST(FoamMath, KShareSumsToFullJacobianWhenOneCascadeActive) {
     const int n = 3; const float inv_n = 1.0f / n;
     const float a = 0.4f, b = -0.2f, c = 0.1f;
     float sum_k = foamc_k_term(a, b, c, inv_n)
-                + foamc_k_term(0, 0, 0, inv_n)
-                + foamc_k_term(0, 0, 0, inv_n);
+                + foamc_k_term(0.0f, 0.0f, 0.0f, inv_n)
+                + foamc_k_term(0.0f, 0.0f, 0.0f, inv_n);
     float j_full = (1.0f + a) * (1.0f + b) - c * c;
     EXPECT_NEAR(sum_k, j_full, 1e-6f);
 }
@@ -43,6 +43,9 @@ TEST(FoamMath, KShareCrossTermsAccountExactly) {
     EXPECT_NEAR(sum_k + cross, j_full, 1e-6f);
 }
 
+// Pins foamc_j_own as the exact algebraic inverse of foamc_k_term's offset —
+// the two functions live apart (store side vs. read side) and must not drift
+// independently. The identity holding in float32 is the regression guard.
 TEST(FoamMath, JOwnRoundTripsThroughK) {
     const float inv_n = 1.0f / 3.0f;
     const float a = 0.2f, b = 0.1f, c = -0.3f;
@@ -69,6 +72,8 @@ TEST(FoamMath, CoverageIsBoundedAndMonotonic) {
 TEST(FoamMath, CoverageFallsBackToStepAtZeroVariance) {
     EXPECT_FLOAT_EQ(foamc_coverage(0.8f, 0.5f, 0.0f), 1.0f);  // mu < eps: folded
     EXPECT_FLOAT_EQ(foamc_coverage(0.8f, 1.0f, 0.0f), 0.0f);  // mu > eps: calm
+    // Strict less-than convention: mu == eps lands calm-side at zero variance.
+    EXPECT_FLOAT_EQ(foamc_coverage(0.8f, 0.8f, 0.0f), 0.0f);
     // Continuity: tiny variance should approach the step values.
     EXPECT_NEAR(foamc_coverage(0.8f, 0.5f, 1e-5f), 1.0f, 1e-3f);
     EXPECT_NEAR(foamc_coverage(0.8f, 1.0f, 1e-5f), 0.0f, 1e-3f);
