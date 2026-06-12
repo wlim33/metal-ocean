@@ -1,6 +1,7 @@
 #pragma once
 #include "gpu/Buffer.h"
 #include <cstddef>
+#include <cstdint>
 namespace mo {
 struct MetalContext;
 struct PipelineCache;
@@ -22,6 +23,7 @@ public:
 private:
     Buffer vbo_[RING]{}, ibo_[RING]{}, cam_buf_[RING]{}, surf_buf_[RING]{};
     size_t index_count_[RING]{};
+    uint32_t index_key_[RING]{};
     void*  pso_ = nullptr;
 };
 }

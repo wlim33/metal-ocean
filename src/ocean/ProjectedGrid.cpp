@@ -142,34 +142,56 @@ ProjectedGridOutput build_projected_grid(const glm::mat4& view, const glm::mat4&
 
     if (xn_min >= xn_max || yn_min >= yn_max) { out.visible = false; return out; }
 
-    // Generate vertex grid in this NDC quad, unproject to world, intersect with y=SL.
+    // Generate vertex grid in this NDC quad, unproject to world, intersect
+    // with y=SL. Unprojection is linear in clip space, so for fixed z
+    // inv_disp * (xn, yn, z, 1) is a bilinear function of (xn, yn) — lerping
+    // the four transformed corners BEFORE the perspective divide is exact,
+    // replacing two mat4 multiplies per vertex with two lerps.
     out.vertices_xz.resize((size_t)p.cols * (size_t)p.rows);
+    auto corner = [&](float xn, float yn, float z) {
+        return inv_disp * glm::vec4(xn, yn, z, 1.0f);
+    };
+    const glm::vec4 a00 = corner(xn_min, yn_min, 0.f), a10 = corner(xn_max, yn_min, 0.f);
+    const glm::vec4 a01 = corner(xn_min, yn_max, 0.f), a11 = corner(xn_max, yn_max, 0.f);
+    const glm::vec4 b00 = corner(xn_min, yn_min, 1.f), b10 = corner(xn_max, yn_min, 1.f);
+    const glm::vec4 b01 = corner(xn_min, yn_max, 1.f), b11 = corner(xn_max, yn_max, 1.f);
     for (int j = 0; j < p.rows; ++j) {
         float v = (p.rows == 1) ? 0.0f : (float)j / (float)(p.rows - 1);
+        glm::vec4 a0 = glm::mix(a00, a01, v), a1 = glm::mix(a10, a11, v);
+        glm::vec4 b0 = glm::mix(b00, b01, v), b1 = glm::mix(b10, b11, v);
         for (int i = 0; i < p.cols; ++i) {
             float u = (p.cols == 1) ? 0.0f : (float)i / (float)(p.cols - 1);
-            float xn = xn_min + (xn_max - xn_min) * u;
-            float yn = yn_min + (yn_max - yn_min) * v;
-
-            Ray r = ndc_ray(inv_disp, xn, yn);
-            float t = (std::abs(r.dir.y) > 1e-6f) ? (SL - r.origin.y) / r.dir.y : 0.0f;
-            glm::vec3 wp = r.origin + r.dir * t;
+            glm::vec4 ac = glm::mix(a0, a1, u);
+            glm::vec4 bc = glm::mix(b0, b1, u);
+            glm::vec3 pa = glm::vec3(ac) / ac.w;
+            glm::vec3 dir = glm::vec3(bc) / bc.w - pa;
+            float t = (std::abs(dir.y) > 1e-6f) ? (SL - pa.y) / dir.y : 0.0f;
+            glm::vec3 wp = pa + dir * t;
             out.vertices_xz[(size_t)j * p.cols + i] = { wp.x, wp.z };
         }
     }
 
-    // Indices: 2 triangles per quad
-    out.indices.reserve(6u * (p.cols - 1) * (p.rows - 1));
-    for (int j = 0; j < p.rows - 1; ++j) {
-        for (int i = 0; i < p.cols - 1; ++i) {
-            uint32_t a = (uint32_t)(j * p.cols + i);
-            uint32_t b = a + 1;
-            uint32_t c = a + p.cols;
-            uint32_t d = c + 1;
-            out.indices.push_back(a); out.indices.push_back(c); out.indices.push_back(b);
-            out.indices.push_back(b); out.indices.push_back(c); out.indices.push_back(d);
+    // Indices: 2 triangles per quad. Content depends only on (cols, rows),
+    // which rarely changes, so rebuild only on a topology change and hand out
+    // copies of the cached buffer.
+    static std::vector<uint32_t> cache;
+    static int ck_cols = -1, ck_rows = -1;
+    if (ck_cols != p.cols || ck_rows != p.rows) {
+        cache.clear();
+        cache.reserve(6u * (p.cols - 1) * (p.rows - 1));
+        for (int j = 0; j < p.rows - 1; ++j) {
+            for (int i = 0; i < p.cols - 1; ++i) {
+                uint32_t a = (uint32_t)(j * p.cols + i);
+                uint32_t b = a + 1;
+                uint32_t c = a + p.cols;
+                uint32_t d = c + 1;
+                cache.push_back(a); cache.push_back(c); cache.push_back(b);
+                cache.push_back(b); cache.push_back(c); cache.push_back(d);
+            }
         }
+        ck_cols = p.cols; ck_rows = p.rows;
     }
+    out.indices = cache;
     return out;
 }
 } // namespace mo

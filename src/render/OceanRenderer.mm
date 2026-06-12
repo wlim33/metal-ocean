@@ -45,7 +45,14 @@ void OceanRenderer::upload_grid(const MetalContext& ctx, const ProjectedGridOutp
     if (vbo_[slot].size < v_bytes) { destroy_buffer(vbo_[slot]); vbo_[slot] = make_buffer(ctx, v_bytes, true); }
     if (ibo_[slot].size < i_bytes) { destroy_buffer(ibo_[slot]); ibo_[slot] = make_buffer(ctx, i_bytes, true); }
     std::memcpy(vbo_[slot].cpu_ptr, g.vertices_xz.data(), v_bytes);
-    std::memcpy(ibo_[slot].cpu_ptr, g.indices.data(),    i_bytes);
+    // Index content is a pure function of grid topology. indices[1] is the
+    // first quad's third corner == cols, so (count, indices[1]) identifies
+    // the (cols, rows) pair; skip the ~1.5 MB re-upload when it matches.
+    uint32_t key = g.indices.size() > 1 ? g.indices[1] : 0;
+    if (index_count_[slot] != g.indices.size() || index_key_[slot] != key) {
+        std::memcpy(ibo_[slot].cpu_ptr, g.indices.data(), i_bytes);
+        index_key_[slot] = key;
+    }
     index_count_[slot] = g.indices.size();
 }
 

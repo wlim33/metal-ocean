@@ -169,3 +169,4 @@ TEST(ProjectedGrid, IndicesReferenceValidVertices) {
     auto out = mo::build_projected_grid(v, proj_mat(), pos, {});
     for (uint32_t i : out.indices) EXPECT_LT(i, out.vertices_xz.size());
 }
+
